@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SX83 | Chat",
-  description: "SX83 — a focused conversational workspace for research, ideas, learning, and building.",
+  title: "SX83 | Community",
+  description: "SX83 — a member-powered community for live chat and open discussions.",
   applicationName: "SX83",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
