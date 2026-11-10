@@ -14,7 +14,8 @@
     "react-dom": "^19.1.0",
     "lucide-react": "^0.468.0",
     "leaflet": "^1.9.4",
-    "react-leaflet": "^5.0.0"
+    "react-leaflet": "^5.0.0",
+    "@supabase/supabase-js": "2.80.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
