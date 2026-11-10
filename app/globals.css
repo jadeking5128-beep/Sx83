@@ -1801,3 +1801,11 @@ body {
 .sx-directory-search{margin:0 0 8px}
 .sx-directory-search input{min-width:0}
 @media(max-width:760px){.sx-announcement-strip{margin:0 8px 7px;padding:8px 10px}.sx-announcement-strip p{font-size:8px}}
+
+
+.sx-announcement-admin{margin:0 12px 8px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.sx-announcement-admin>button,.sx-announcement-admin form>button{min-height:28px;padding:0 10px;border:1px solid rgba(215,225,220,.17);border-radius:8px;background:rgba(255,255,255,.045);color:#bfcac3;font:7px var(--mono);letter-spacing:.7px}
+.sx-announcement-admin form{display:grid;width:100%;gap:7px;padding:10px;border:1px solid var(--msg-border);border-radius:10px;background:rgba(255,255,255,.025)}
+.sx-announcement-admin input,.sx-announcement-admin textarea{width:100%;padding:9px;border:1px solid var(--msg-border);border-radius:7px;background:#090d0c;color:#e6ece7;font:10px var(--sans);outline:none}
+.sx-announcement-admin textarea{resize:vertical;line-height:1.5}
+.sx-announcement-admin form>button{justify-self:start;background:rgba(220,230,225,.1)}
