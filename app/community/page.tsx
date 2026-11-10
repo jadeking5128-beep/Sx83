@@ -224,7 +224,7 @@ export default function CommunityPage() {
         const row = (payload.new || payload.old) as ChangeRow;
         if (row && (row.sender_id === userId || row.recipient_id === userId)) {
           if (activePeerId && (row.sender_id === activePeerId || row.recipient_id === activePeerId)) void loadMessages(activePeerId);
-          if (payload.eventType === "INSERT" && row.sender_id !== userId && row.recipient_id === userId && !mutedIds.includes(row.sender_id) && document.hidden && "Notification" in window && Notification.permission === "granted") {
+          if (payload.eventType === "INSERT" && row.sender_id !== userId && row.recipient_id === userId && Boolean(row.sender_id) && !mutedIds.includes(row.sender_id) && document.hidden && "Notification" in window && Notification.permission === "granted") {
             const sender = profiles.find(person => person.id === row.sender_id);
             new Notification(sender?.display_name || "SX83 message", { body: row.body || "Sent an attachment" });
           }
