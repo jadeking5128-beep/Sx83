@@ -13,23 +13,24 @@ function decode(value: string) {
 }
 
 function readTag(block: string, tag: string) {
-  const match = block.match(new RegExp(`<(?:[\\w-]+:)?${tag}\\b[^>]*>([\\s\\S]*?)<\\/(?:[\\w-]+:)?${tag}\\s*>`, "i"));
+  const pattern = "<(?:[\\w-]+:)?" + tag + "\\b[^>]*>([\\s\\S]*?)</(?:[\\w-]+:)?" + tag + "\\s*>";
+  const match = block.match(new RegExp(pattern, "i"));
   return match ? decode(match[1]) : "";
 }
 
 export async function GET() {
   const results = await Promise.allSettled(feeds.map(async (feed) => {
     const response = await fetch(feed.url, { cache: "no-store", headers: { "User-Agent": "SectorX83Research/1.0", Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml" }, signal: AbortSignal.timeout(9000) });
-    if (!response.ok) throw new Error(`${feed.name} returned ${response.status}`);
+    if (!response.ok) throw new Error(feed.name + " returned " + response.status);
     const xml = await response.text();
-    const blocks = [...xml.matchAll(/<(item|entry)\\b[^>]*>([\\s\\S]*?)<\\/\\1>/gi)].map((match) => match[2]);
+    const blocks = [...xml.matchAll(/<(item|entry)\b[^>]*>([\s\S]*?)<\/\1>/gi)].map((match) => match[2]);
     return blocks.map((block, index) => {
       const title = readTag(block, "title");
-      const linkTag = block.match(/<link\\b[^>]*href=["']([^"']+)["'][^>]*\\/?\s*>/i);
+      const linkTag = block.match(/<link\b[^>]*href=["']([^"']+)["'][^>]*\/?\s*>/i);
       const link = readTag(block, "link") || linkTag?.[1] || readTag(block, "guid") || "";
       const date = readTag(block, "pubDate") || readTag(block, "published") || readTag(block, "updated");
-      return { id: link || `${feed.name}-${index}`, title, url: link, domain: feed.name, language: "Source feed", seen: date, image: null };
-    }).filter((article) => article.title && /^https?:\\/\\//i.test(article.url));
+      return { id: link || feed.name + "-" + index, title, url: link, domain: feed.name, language: "Source feed", seen: date, image: null };
+    }).filter((article) => article.title && /^https?:\/\//i.test(article.url));
   }));
 
   const articles = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
