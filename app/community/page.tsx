@@ -4,9 +4,9 @@ import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useS
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, Bell, Check, CheckCheck, ChevronDown, FileText, Image as ImageIcon,
-  LogOut, MessageCircle, MessageSquare, Mic, MoreHorizontal, Paperclip, Pencil,
-  Pin, Plus, RefreshCw, Reply, Search, Send, Shield, Smile, StopCircle,
+  ArrowLeft, Bell, Check, CheckCheck, ChevronDown, FileText,
+  LogOut, MessageCircle, Mic, MoreHorizontal, Paperclip, Pencil,
+  Pin, Plus, RefreshCw, Reply, Search, Send, Shield, StopCircle,
   Trash2, Users, X, Volume2
 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
@@ -71,13 +71,14 @@ export default function CommunityPage() {
   const [profileDraft, setProfileDraft] = useState({ username: "", display_name: "", bio: "", location: "", website_url: "", avatar_url: "", skills: "", interests: "" });
   const [profileBusy, setProfileBusy] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [, setNotificationsEnabled] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const chatLogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingChannelRef = useRef<ReturnType<ReturnType<typeof getSupabase>[\"channel\"]> | null>(null);
   const lastTypingRef = useRef(0);
 
   const activePeer = useMemo(() => profiles.find(person => person.id === activePeerId) || null, [profiles, activePeerId]);
@@ -185,6 +186,10 @@ export default function CommunityPage() {
         const row = (payload.new || payload.old) as any;
         if (row && (row.sender_id === userId || row.recipient_id === userId)) {
           if (activePeerId && (row.sender_id === activePeerId || row.recipient_id === activePeerId)) void loadMessages(activePeerId);
+          if (payload.eventType === "INSERT" && row.sender_id !== userId && row.recipient_id === userId && document.hidden && "Notification" in window && Notification.permission === "granted") {
+            const sender = profiles.find(person => person.id === row.sender_id);
+            new Notification(sender?.display_name || "SX83 message", { body: row.body || "Sent an attachment" });
+          }
           void refreshInbox(userId);
         }
       })
@@ -232,7 +237,8 @@ export default function CommunityPage() {
         typingTimerRef.current = setTimeout(() => setTypingUsers([]), 2400);
       }
     }).subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    typingChannelRef.current = channel;
+    return () => { typingChannelRef.current = null; void supabase.removeChannel(channel); };
   }, [userId, context]);
 
   useEffect(() => {
@@ -254,11 +260,9 @@ export default function CommunityPage() {
   function sendTyping() {
     if (!userId || Date.now() - lastTypingRef.current < 1000) return;
     lastTypingRef.current = Date.now();
-    const channel = getSupabase().channel("sx83-typing-" + context);
-    void channel.send({ type: "broadcast", event: "typing", payload: {
+    void typingChannelRef.current?.send({ type: "broadcast", event: "typing", payload: {
       user_id: userId, user_name: profile?.display_name || "Member", context
     } });
-    void getSupabase().removeChannel(channel);
   }
 
   async function submitMessage(event: FormEvent<HTMLFormElement>) {
@@ -429,11 +433,6 @@ export default function CommunityPage() {
   }
 
   const memberMap = useMemo(() => new Map(profiles.map(person => [person.id, person])), [profiles]);
-  const latestByPeer = useMemo(() => {
-    const result = new Map<string, ChatMessage>();
-    return result;
-  }, [messages]);
-
   return <main className="sx-community-page chat-active sx-messenger">
     <header className="sx-community-top">
       <Link href="/community" className="sx-community-brand"><span className="sx-mark small"><span>SX</span><b>83</b></span><span>SECTORX83 <small>COMMUNITY NETWORK</small></span></Link>
