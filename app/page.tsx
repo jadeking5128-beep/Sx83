@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity, ArrowDownRight, ArrowUpRight, Atom, Bell, BookOpen, ChevronDown, ChevronRight,
-  CircleDot, Clock3, ExternalLink, FileText, Globe2, Landmark, Layers3, Menu, MessageSquare,
+  Activity, ArrowUpRight, Atom, Bell, BookOpen, ChevronDown, ChevronRight,
+  CircleDot, Clock3, ExternalLink, Globe2, Landmark, Layers3, Menu,
   Newspaper, RadioTower, RefreshCw, Search, ShieldCheck, Sparkles, TrendingUp, X, Zap,
 } from "lucide-react";
 import { researchSources } from "@/lib/sources";
