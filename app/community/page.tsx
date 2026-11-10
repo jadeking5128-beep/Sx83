@@ -57,6 +57,7 @@ export default function CommunityPage() {
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
+  const [mutedIds, setMutedIds] = useState<string[]>([]);
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [lastMessages, setLastMessages] = useState<Record<string, InboxMessage>>({});
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
@@ -159,10 +160,11 @@ export default function CommunityPage() {
     if (authError || !auth.user) { router.replace("/join"); return; }
     const uid = auth.user.id;
     setUserId(uid);
-    const [own, members, blocks] = await Promise.all([
+    const [own, members, blocks, muted] = await Promise.all([
       supabase.from("profiles").select("id,username,display_name,bio,location,website_url,avatar_url,skills,interests").eq("id", uid).maybeSingle(),
       supabase.from("profiles").select("id,username,display_name,bio,location,website_url,avatar_url,skills,interests").order("display_name").limit(200),
-      supabase.from("member_blocks").select("blocked_id").eq("blocker_id", uid)
+      supabase.from("member_blocks").select("blocked_id").eq("blocker_id", uid),
+      supabase.from("muted_conversations").select("peer_id").eq("user_id", uid)
     ]);
     if (own.error) setError(own.error.message);
     else if (own.data) {
@@ -176,6 +178,7 @@ export default function CommunityPage() {
     } else setError("Your member profile is missing. Contact a community administrator.");
     if (members.error) setError(members.error.message); else setProfiles(members.data || []);
     setBlockedIds((blocks.data || []).map((row: { blocked_id: string }) => row.blocked_id));
+    setMutedIds((muted.data || []).map((row: { peer_id: string }) => row.peer_id));
     await Promise.all([loadMessages(null, uid), refreshInbox(uid)]);
     setLoading(false);
   }, [router, loadMessages, refreshInbox]);
@@ -221,7 +224,7 @@ export default function CommunityPage() {
         const row = (payload.new || payload.old) as ChangeRow;
         if (row && (row.sender_id === userId || row.recipient_id === userId)) {
           if (activePeerId && (row.sender_id === activePeerId || row.recipient_id === activePeerId)) void loadMessages(activePeerId);
-          if (payload.eventType === "INSERT" && row.sender_id !== userId && row.recipient_id === userId && document.hidden && "Notification" in window && Notification.permission === "granted") {
+          if (payload.eventType === "INSERT" && row.sender_id !== userId && row.recipient_id === userId && !mutedIds.includes(row.sender_id) && document.hidden && "Notification" in window && Notification.permission === "granted") {
             const sender = profiles.find(person => person.id === row.sender_id);
             new Notification(sender?.display_name || "SX83 message", { body: row.body || "Sent an attachment" });
           }
@@ -243,7 +246,7 @@ export default function CommunityPage() {
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [userId, activePeerId, loadMessages, refreshInbox, profiles]);
+  }, [userId, activePeerId, loadMessages, refreshInbox, profiles, mutedIds]);
 
   useEffect(() => {
     if (!userId) return;
@@ -433,6 +436,15 @@ export default function CommunityPage() {
     }
   }
 
+  async function toggleMute(person: Profile) {
+    const isMuted = mutedIds.includes(person.id);
+    const result = isMuted
+      ? await getSupabase().from("muted_conversations").delete().eq("user_id", userId).eq("peer_id", person.id)
+      : await getSupabase().from("muted_conversations").insert({ user_id: userId, peer_id: person.id });
+    if (result.error) setError(result.error.message);
+    else setMutedIds(current => isMuted ? current.filter(id => id !== person.id) : [...current, person.id]);
+  }
+
   async function toggleBlock(person: Profile) {
     const isBlocked = blockedIds.includes(person.id);
     if (isBlocked) {
@@ -518,7 +530,7 @@ export default function CommunityPage() {
           <div className="sx-inbox-list">
             {filteredMembers.map(person => <button key={person.id} className={"sx-inbox-person " + (activePeerId === person.id ? "active" : "")} onClick={() => switchConversation(person.id)}>
               <span className="sx-avatar-wrap"><span className="sx-avatar">{person.avatar_url ? <img src={person.avatar_url} alt=""/> : initials(person.display_name)}</span><i className={onlineIds.includes(person.id) ? "online" : ""}/></span>
-              <span className="sx-inbox-copy"><strong>{person.display_name}</strong><small>{lastMessages[person.id]?.body || ("@" + person.username)}</small></span>
+              <span className="sx-inbox-copy"><strong>{person.display_name}</strong><small>{mutedIds.includes(person.id) ? "Muted conversation" : (lastMessages[person.id]?.body || ("@" + person.username))}</small></span>
               {unread[person.id] > 0 && <span className="sx-unread-count">{unread[person.id] > 99 ? "99+" : unread[person.id]}</span>}
             </button>)}
             {!filteredMembers.length && <p className="sx-inbox-empty">No members found.</p>}
@@ -657,7 +669,7 @@ export default function CommunityPage() {
         {profileTarget.location && <small>{profileTarget.location}</small>}
         {profileTarget.website_url && <a href={profileTarget.website_url} target="_blank" rel="noreferrer">{profileTarget.website_url}</a>}
         {!!profileTarget.skills?.length && <div className="sx-member-tags">{profileTarget.skills.map(tag => <span key={tag}>{tag}</span>)}</div>}
-        <div className="sx-member-card-actions"><button className="sx-gold-button" onClick={() => { switchConversation(profileTarget.id); setProfileTarget(null); }}>MESSAGE MEMBER</button><button className="sx-secondary-button" onClick={() => void toggleBlock(profileTarget)}>{blockedIds.includes(profileTarget.id) ? "UNBLOCK" : "BLOCK MEMBER"}</button></div>
+        <div className="sx-member-card-actions"><button className="sx-gold-button" onClick={() => { switchConversation(profileTarget.id); setProfileTarget(null); }}>MESSAGE MEMBER</button><button className="sx-secondary-button" onClick={() => void toggleMute(profileTarget)}>{mutedIds.includes(profileTarget.id) ? "UNMUTE" : "MUTE CHAT"}</button><button className="sx-secondary-button" onClick={() => void toggleBlock(profileTarget)}>{blockedIds.includes(profileTarget.id) ? "UNBLOCK" : "BLOCK MEMBER"}</button></div>
       </section>
     </div>}
   </main>;
