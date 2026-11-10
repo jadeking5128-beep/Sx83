@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
 export async function GET() {
@@ -12,7 +13,7 @@ export async function GET() {
   url.searchParams.set("sort", "HybridRel");
 
   try {
-    const response = await fetch(url, { next: { revalidate: 300 }, headers: { "User-Agent": "SectorX83-Research/1.0" }, signal: AbortSignal.timeout(9000) });
+    const response = await fetch(url, { cache: "no-store", headers: { "User-Agent": "SectorX83-Research/1.0" }, signal: AbortSignal.timeout(12000) });
     if (!response.ok) throw new Error(`Source returned ${response.status}`);
     const payload = await response.json();
     const articles = Array.isArray(payload.articles) ? payload.articles : [];
@@ -30,6 +31,6 @@ export async function GET() {
       })).filter((article: { url: string; title: string }) => article.url && article.title),
     }, { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" } });
   } catch {
-    return NextResponse.json({ source: "GDELT Project", updatedAt: new Date().toISOString(), articles: [], unavailable: true }, { status: 200 });
+    return NextResponse.json({ source: "GDELT Project", updatedAt: new Date().toISOString(), articles: [], unavailable: true }, { status: 200, headers: { "Cache-Control": "no-store" } });
   }
 }
