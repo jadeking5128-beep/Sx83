@@ -350,16 +350,22 @@ export default function CommunityPage() {
   async function editMessage(message: ChatMessage) {
     const body = chatText.trim();
     if (!body) return;
-    const table = activePeerId ? "direct_messages" : "community_messages";
-    const { error: updateError } = await getSupabase().from(table).update({ body, edited_at: new Date().toISOString() }).eq("id", message.id);
+    const supabase = getSupabase();
+    const result = activePeerId
+      ? await supabase.from("direct_messages").update({ body, edited_at: new Date().toISOString() }).eq("id", message.id)
+      : await supabase.from("community_messages").update({ body, edited_at: new Date().toISOString() }).eq("id", message.id);
+    const updateError = result.error;
     if (updateError) setError(updateError.message);
     else { setEditTarget(null); setChatText(""); setNotice("Message updated."); await loadMessages(activePeerId); }
   }
 
   async function deleteMessage(message: ChatMessage) {
     if (!window.confirm("Delete this message?")) return;
-    const table = activePeerId ? "direct_messages" : "community_messages";
-    const { error: deleteError } = await getSupabase().from(table).delete().eq("id", message.id);
+    const supabase = getSupabase();
+    const result = activePeerId
+      ? await supabase.from("direct_messages").delete().eq("id", message.id)
+      : await supabase.from("community_messages").delete().eq("id", message.id);
+    const deleteError = result.error;
     if (deleteError) setError(deleteError.message);
     else { setMessages(current => current.filter(item => item.id !== message.id)); setNotice("Message deleted."); }
   }
