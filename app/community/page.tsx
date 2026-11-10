@@ -47,7 +47,7 @@ function pairContext(a: string, b: string) {
   return "dm-" + [a, b].sort().join("-");
 }
 function renderMessageText(body: string) {
-  return body.split(/(https?:\\/\\/[^\\s]+)/g).map((part, index) => /^https?:\\/\\//.test(part)
+  return body.split(/(https?:\/\/\S+)/g).map((part, index) => /^https?:\/\//.test(part)
     ? <a key={index} href={part} target="_blank" rel="noreferrer">{part}</a>
     : <span key={index}>{part}</span>);
 }
@@ -238,7 +238,7 @@ export default function CommunityPage() {
         const row = (payload.new || payload.old) as ChangeRow;
         if (row && (row.sender_id === userId || row.recipient_id === userId)) {
           if (activePeerId && (row.sender_id === activePeerId || row.recipient_id === activePeerId)) void loadMessages(activePeerId);
-          if (payload.eventType === "INSERT" && row.sender_id !== userId && row.recipient_id === userId && Boolean(row.sender_id) && !mutedIds.includes(row.sender_id)) {
+          if (payload.eventType === "INSERT" && row.sender_id !== userId && row.recipient_id === userId && row.sender_id && !mutedIds.includes(row.sender_id)) {
             if (soundEnabled) playPing();
             if (document.hidden && "Notification" in window && Notification.permission === "granted") {
             const sender = profiles.find(person => person.id === row.sender_id);
