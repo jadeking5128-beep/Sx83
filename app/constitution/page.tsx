@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Scale, ShieldCheck } from "lucide-react";
+import { Scale, ShieldCheck } from "lucide-react";
 
 const articles = [
   ["01", "Purpose", "SectorX83 is an independent, voluntary community for research, discussion, civic understanding and shared learning. It has no authority over people outside the community."],
@@ -20,7 +20,7 @@ export default function ConstitutionPage() {
     <section className="sx-constitution-shell">
       <div className="sx-kicker">FOUNDATION / GOVERNANCE</div><div className="sx-constitution-hero"><div><div className="sx-constitution-symbol"><Scale size={42}/></div><h1>Constitution of <span>SectorX83.</span></h1><p>A framework for a voluntary community built on independent thought, equal standing, accountability and freedom of conscience.</p></div><div className="sx-constitution-seal"><ShieldCheck size={34}/><span>NO MEMBER</span><strong>ABOVE THE RULES</strong></div></div>
       <div className="sx-constitution-list">{articles.map(([number,title,body])=><article key={number}><span>{number}</span><div><h2>{title}</h2><p>{body}</p></div></article>)}</div>
-      <div className="sx-constitution-note">This is the community's operating framework. It does not replace applicable law or create authority over any person outside SectorX83.</div>
+      <div className="sx-constitution-note">This is the community&apos;s operating framework. It does not replace applicable law or create authority over any person outside SectorX83.</div>
       <footer className="sx-community-footer"><span>SECTORX83 · CONSTITUTION</span><Link href="/join">JOIN THE NETWORK ↗</Link></footer>
     </section>
   </main>;
