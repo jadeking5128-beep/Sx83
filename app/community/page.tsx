@@ -70,6 +70,10 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
   const [incomingRequests, setIncomingRequests] = useState<DMRequest[]>([]);
   const [outgoingRequestIds, setOutgoingRequestIds] = useState<string[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [isModerator, setIsModerator] = useState(false);
+  const [announcementComposerOpen, setAnnouncementComposerOpen] = useState(false);
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementBody, setAnnouncementBody] = useState("");
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [chatText, setChatText] = useState("");
@@ -220,6 +224,12 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
   }, [router, loadMessages, refreshInbox, initialView]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (!userId) return;
+    void getSupabase().rpc("is_current_moderator").then(({ data, error: roleError }) => {
+      if (!roleError) setIsModerator(Boolean(data));
+    });
+  }, [userId]);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("sx83-chat-theme");
@@ -365,6 +375,20 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
       setActivePeerId(filteredMembers[0].id);
     }
   }, [initialView, loading, activePeerId, filteredMembers]);
+
+  async function publishAnnouncement(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!userId || !isModerator || !announcementTitle.trim() || !announcementBody.trim()) return;
+    const { data, error: publishError } = await getSupabase().from("community_announcements")
+      .insert({ author_id: userId, title: announcementTitle.trim(), body: announcementBody.trim() })
+      .select("id,title,body,created_at,pinned").single();
+    if (publishError) setError(publishError.message);
+    else {
+      setAnnouncements(current => [data as Announcement, ...current].slice(0, 5));
+      setAnnouncementTitle(""); setAnnouncementBody(""); setAnnouncementComposerOpen(false);
+      setNotice("Community announcement published.");
+    }
+  }
 
   async function respondToRequest(request: DMRequest, accept: boolean) {
     const supabase = getSupabase();
@@ -698,6 +722,14 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
             </div>
           </div>
 
+          {initialView === "messages" && isModerator && <div className="sx-announcement-admin">
+            <button onClick={() => setAnnouncementComposerOpen(value => !value)}>{announcementComposerOpen ? "CLOSE ANNOUNCEMENT" : "＋ POST ANNOUNCEMENT"}</button>
+            {announcementComposerOpen && <form onSubmit={publishAnnouncement}>
+              <input required maxLength={120} value={announcementTitle} onChange={event => setAnnouncementTitle(event.target.value)} placeholder="Announcement title"/>
+              <textarea required maxLength={5000} rows={3} value={announcementBody} onChange={event => setAnnouncementBody(event.target.value)} placeholder="Write an update for the community…"/>
+              <button type="submit">PUBLISH NOTICE</button>
+            </form>}
+          </div>}
           {initialView === "messages" && announcements.length > 0 && <div className="sx-announcement-strip"><span>NOTICE</span><div><strong>{announcements[0].title}</strong><p>{announcements[0].body}</p></div></div>}
           {pinnedIds.length > 0 && <div className="sx-pinned-strip"><Pin size={13}/><span>{pinnedIds.length} saved message{pinnedIds.length === 1 ? "" : "s"} in this conversation</span><button onClick={() => {
             const pinned = messages.find(item => pinnedIds.includes(item.id));
