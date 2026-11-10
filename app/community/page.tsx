@@ -363,7 +363,7 @@ export default function CommunityPage() {
       : await supabase.from("community_messages").insert({ author_id: userId, body: body || "Attachment", reply_to_id: replyTarget?.id || null });
     const insertError = result.error;
     if (insertError) setError(insertError.message);
-    else { forceScrollRef.current = true; stickToBottomRef.current = true; setChatText(""); setReplyTarget(null); }
+    else { forceScrollRef.current = true; stickToBottomRef.current = true; setChatText(""); setReplyTarget(null); await loadMessages(activePeerId); }
     setBusy(false);
   }
 
@@ -388,7 +388,7 @@ export default function CommunityPage() {
     if (insertError) {
       setError(insertError.message);
       await getSupabase().storage.from(MEDIA_BUCKET).remove([path]);
-    } else { forceScrollRef.current = true; stickToBottomRef.current = true; setChatText(""); setReplyTarget(null); }
+    } else { forceScrollRef.current = true; stickToBottomRef.current = true; setChatText(""); setReplyTarget(null); await loadMessages(activePeerId); }
     setBusy(false);
   }
 
