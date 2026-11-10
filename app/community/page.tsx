@@ -27,6 +27,8 @@ type ChatMessage = {
 type Reaction = { id: string; message_id: string; user_id: string; emoji: string };
 type GlobalSearchResult = ChatMessage & { conversationType: "community" | "direct"; peerId?: string };
 type InboxMessage = { id: string; sender_id: string; recipient_id: string; read_at: string | null; created_at: string; body: string };
+type DMRequest = { id: string; sender_id: string; recipient_id: string; body: string; status: "pending" | "accepted" | "declined"; created_at: string };
+type Announcement = { id: string; title: string; body: string; created_at: string; pinned: boolean };
 type ChangeRow = { id?: string; sender_id?: string; recipient_id?: string; body?: string; message_id?: string; user_id?: string; emoji?: string };
 type TypingUser = { user_id: string; user_name: string; context: string };
 
@@ -65,6 +67,9 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
   const [mutedIds, setMutedIds] = useState<string[]>([]);
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [lastMessages, setLastMessages] = useState<Record<string, InboxMessage>>({});
+  const [incomingRequests, setIncomingRequests] = useState<DMRequest[]>([]);
+  const [outgoingRequestIds, setOutgoingRequestIds] = useState<string[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [chatText, setChatText] = useState("");
@@ -178,7 +183,10 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
       supabase.from("profiles").select("id,username,display_name,bio,location,website_url,avatar_url,skills,interests").eq("id", uid).maybeSingle(),
       supabase.from("profiles").select("id,username,display_name,bio,location,website_url,avatar_url,skills,interests").order("display_name").limit(200),
       supabase.from("member_blocks").select("blocked_id").eq("blocker_id", uid),
-      supabase.from("muted_conversations").select("peer_id").eq("user_id", uid)
+      supabase.from("muted_conversations").select("peer_id").eq("user_id", uid),
+      supabase.from("dm_requests").select("*").eq("recipient_id", uid).eq("status", "pending").order("created_at", { ascending: false }).limit(30),
+      supabase.from("dm_requests").select("recipient_id").eq("sender_id", uid).eq("status", "pending"),
+      supabase.from("community_announcements").select("id,title,body,created_at,pinned").order("pinned", { ascending: false }).order("created_at", { ascending: false }).limit(5)
     ]);
     if (own.error) setError(own.error.message);
     else if (own.data) {
@@ -193,6 +201,9 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
     if (members.error) setError(members.error.message); else setProfiles(members.data || []);
     setBlockedIds((blocks.data || []).map((row: { blocked_id: string }) => row.blocked_id));
     setMutedIds((muted.data || []).map((row: { peer_id: string }) => row.peer_id));
+    setIncomingRequests((requests.data || []) as DMRequest[]);
+    setOutgoingRequestIds((outgoing.data || []).map((row: { recipient_id: string }) => row.recipient_id));
+    setAnnouncements((announcementRows.data || []) as Announcement[]);
     await Promise.all([
       initialView === "messages" ? loadMessages(null, uid) : Promise.resolve(),
       refreshInbox(uid)
@@ -347,6 +358,19 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
     }
   }, [initialView, loading, activePeerId, filteredMembers]);
 
+  async function respondToRequest(request: DMRequest, accept: boolean) {
+    const supabase = getSupabase();
+    const { error: responseError } = await supabase.from("dm_requests").update({ status: accept ? "accepted" : "declined", responded_at: new Date().toISOString() }).eq("id", request.id);
+    if (responseError) { setError(responseError.message); return; }
+    if (accept) {
+      const { error: messageError } = await supabase.from("direct_messages").insert({ sender_id: request.sender_id, recipient_id: userId, body: request.body });
+      if (messageError) { setError(messageError.message); return; }
+    }
+    setIncomingRequests(current => current.filter(item => item.id !== request.id));
+    if (accept) { await refreshInbox(userId); switchConversation(request.sender_id); setNotice("Message request accepted."); }
+    else setNotice("Message request declined.");
+  }
+
   function switchConversation(peerId: string | null) {
     setActivePeerId(peerId);
     setError(""); setNotice("");
@@ -367,6 +391,13 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
     if (activePeerId && blockedIds.includes(activePeerId)) { setError("Unblock this member before sending a direct message."); return; }
     setBusy(true); setError("");
     const supabase = getSupabase();
+    if (activePeerId && !lastMessages[activePeerId]) {
+      if (outgoingRequestIds.includes(activePeerId)) { setError("Your message request is waiting for a response."); setBusy(false); return; }
+      const request = await supabase.from("dm_requests").insert({ sender_id: userId, recipient_id: activePeerId, body: body || "Hello" });
+      if (request.error) setError(request.error.message);
+      else { setOutgoingRequestIds(current => [...current, activePeerId]); setChatText(""); setReplyTarget(null); setNotice("Message request sent. You can chat once the member accepts."); }
+      setBusy(false); return;
+    }
     const result = activePeerId
       ? await supabase.from("direct_messages").insert({ sender_id: userId, recipient_id: activePeerId, body: body || "Attachment", reply_to_id: replyTarget?.id || null })
       : await supabase.from("community_messages").insert({ author_id: userId, body: body || "Attachment", reply_to_id: replyTarget?.id || null });
@@ -378,6 +409,7 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
 
   async function uploadAttachment(file: File) {
     if (!userId || !profile || busy) return;
+    if (activePeerId && !lastMessages[activePeerId]) { setError("Send a text message request first. Attachments unlock after it is accepted."); return; }
     if (file.size > 25 * 1024 * 1024) { setError("Files must be 25 MB or smaller."); return; }
     setBusy(true); setError("");
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-90);
@@ -606,6 +638,13 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
             <span className="sx-inbox-copy"><strong>Community room</strong><small>Public · everyone</small></span>
             <span className="sx-room-live">LIVE</span>
           </button>}
+          {incomingRequests.length > 0 && <div className="sx-request-panel">
+            <div className="sx-inbox-section"><span>MESSAGE REQUESTS · {incomingRequests.length}</span></div>
+            {incomingRequests.map(request => <div className="sx-request-card" key={request.id}>
+              <strong>{profiles.find(person => person.id === request.sender_id)?.display_name || "SX83 member"}</strong>
+              <p>{request.body}</p><div><button onClick={() => void respondToRequest(request, true)}>ACCEPT</button><button onClick={() => void respondToRequest(request, false)}>DECLINE</button></div>
+            </div>)}
+          </div>}
           <div className="sx-inbox-section"><span>{initialView === "dms" ? "YOUR CONVERSATIONS" : "DIRECT MESSAGES"}</span><button onClick={() => setShowMembers(value => !value)} aria-label="Toggle members"><Plus size={14}/></button></div>
           <label className="sx-search-field"><Search size={14}/><input value={memberSearch} onChange={event => setMemberSearch(event.target.value)} placeholder="Find a member…"/></label>
           <div className="sx-inbox-list">
@@ -613,6 +652,7 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
               <span className="sx-avatar-wrap"><span className="sx-avatar">{person.avatar_url ? <img src={person.avatar_url} alt=""/> : initials(person.display_name)}</span><i className={onlineIds.includes(person.id) ? "online" : ""}/></span>
               <span className="sx-inbox-copy"><strong>{person.display_name}</strong><small>{mutedIds.includes(person.id) ? "Muted conversation" : (lastMessages[person.id]?.body || ("@" + person.username))}</small></span>
               {unread[person.id] > 0 && <span className="sx-unread-count">{unread[person.id] > 99 ? "99+" : unread[person.id]}</span>}
+              {outgoingRequestIds.includes(person.id) && !lastMessages[person.id] && <span className="sx-request-pending">PENDING</span>}
             </button>)}
             {!filteredMembers.length && <p className="sx-inbox-empty">No members found.</p>}
           </div>
@@ -650,6 +690,7 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
             </div>
           </div>
 
+          {initialView === "messages" && announcements.length > 0 && <div className="sx-announcement-strip"><span>NOTICE</span><div><strong>{announcements[0].title}</strong><p>{announcements[0].body}</p></div></div>}
           {pinnedIds.length > 0 && <div className="sx-pinned-strip"><Pin size={13}/><span>{pinnedIds.length} saved message{pinnedIds.length === 1 ? "" : "s"} in this conversation</span><button onClick={() => {
             const pinned = messages.find(item => pinnedIds.includes(item.id));
             if (pinned) chatLogRef.current?.querySelector('[data-message-id="' + pinned.id + '"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -693,6 +734,7 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
           </div>
 
           <div className="sx-composer-wrap">
+            {activePeer && outgoingRequestIds.includes(activePeer.id) && !lastMessages[activePeer.id] && <div className="sx-composer-context"><Bell size={13}/><span>Message request sent. Waiting for acceptance.</span></div>}
             {replyTarget && <div className="sx-composer-context"><Reply size={13}/><span>Replying to <strong>{memberMap.get((activePeerId ? replyTarget.sender_id : replyTarget.author_id) || "")?.display_name || "member"}</strong>: {replyTarget.body.slice(0, 90)}</span><button onClick={() => setReplyTarget(null)}><X size={14}/></button></div>}
             {editTarget && <div className="sx-composer-context"><Pencil size={13}/><span>Editing message</span><button onClick={() => { setEditTarget(null); setChatText(""); }}><X size={14}/></button></div>}
             <form className="sx-chat-form sx-rich-composer" onSubmit={editTarget ? event => { event.preventDefault(); void editMessage(editTarget); } : submitMessage}>
@@ -703,7 +745,7 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
               </div>
               <textarea ref={inputRef} value={chatText} onChange={event => { setChatText(event.target.value); sendTyping(); }} onKeyDown={handleComposerKey} rows={1} maxLength={2000} placeholder={recording ? "Recording voice message…" : activePeer ? "Message " + activePeer.display_name + "…" : "Write to the community…"} aria-label="Message"/>
               {recording ? <button type="button" className="sx-send-button recording" onClick={stopRecording}><StopCircle size={17}/></button>
-                : <button className="sx-send-button" disabled={busy || !chatText.trim()} aria-label={editTarget ? "Save message" : "Send message"}>{busy ? <RefreshCw size={16} className="sx-spin"/> : editTarget ? <Check size={17}/> : <Send size={17}/>}</button>}
+                : <button className="sx-send-button" disabled={busy || !chatText.trim() || Boolean(activePeer && outgoingRequestIds.includes(activePeer.id) && !lastMessages[activePeer.id])} aria-label={editTarget ? "Save message" : "Send message"}>{busy ? <RefreshCw size={16} className="sx-spin"/> : editTarget ? <Check size={17}/> : <Send size={17}/>}</button>}
             </form>
             <div className="sx-composer-foot"><span>{activePeer ? "PRIVATE · END-TO-END TRANSPORT VIA SUPABASE AUTH" : "COMMUNITY ROOM · VISIBLE TO ALL MEMBERS"}</span><span>ENTER TO SEND · SHIFT + ENTER FOR NEW LINE</span></div>
           </div>
@@ -712,7 +754,8 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
         <aside className={"sx-member-rail glass-panel " + (showMembers ? "" : "collapsed")}>
           <div className="sx-inbox-head"><div><div className="sx-kicker">COMMUNITY</div><h2>Members</h2></div><button className="sx-icon-action" onClick={() => setShowMembers(value => !value)}><X size={15}/></button></div>
           <div className="sx-rail-stats"><span><i className="online"/> {onlineIds.length} ONLINE</span><span>{profiles.length} TOTAL</span></div>
-          <div className="sx-member-rail-list">{profiles.filter(person => person.id !== userId).sort((a,b) => Number(onlineIds.includes(b.id))-Number(onlineIds.includes(a.id))).map(person => <button key={person.id} onClick={() => switchConversation(person.id)} className="sx-rail-member">
+          <label className="sx-search-field sx-directory-search"><Search size={14}/><input value={memberSearch} onChange={event => setMemberSearch(event.target.value)} placeholder="Search members and skills…"/></label>
+          <div className="sx-member-rail-list">{profiles.filter(person => person.id !== userId && (!memberSearch.trim() || [person.display_name, person.username, ...(person.skills || []), ...(person.interests || [])].join(" ").toLowerCase().includes(memberSearch.toLowerCase()))).sort((a,b) => Number(onlineIds.includes(b.id))-Number(onlineIds.includes(a.id))).map(person => <button key={person.id} onClick={() => switchConversation(person.id)} className="sx-rail-member">
             <span className="sx-avatar-wrap"><span className="sx-avatar">{person.avatar_url ? <img src={person.avatar_url} alt=""/> : initials(person.display_name)}</span><i className={onlineIds.includes(person.id) ? "online" : ""}/></span>
             <span><strong>{person.display_name}</strong><small>{onlineIds.includes(person.id) ? "Online" : "Offline"}</small></span>
           </button>)}</div>
