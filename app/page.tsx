@@ -1,178 +1,288 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Activity, ArrowUpRight, Atom, Bell, Building2,
-  CalendarClock, ChevronDown, ChevronRight, CircleDot, Clock3, Database,
-  FileText, Globe2, Landmark, Menu, Newspaper, RadioTower,
-  RefreshCw, Search, ShieldCheck, Sparkles, TrendingUp, X,
+  ArrowDown, ArrowUp, Check, ChevronDown, Menu, MessageSquare,
+  MoreHorizontal, Plus, Search, Settings2, Sparkles, SquarePen, X,
 } from "lucide-react";
-import { researchSources } from "@/lib/sources";
 
-const WorldMap = dynamic(() => import("@/components/WorldMap"), {
-  ssr: false,
-  loading: () => <div className="map-loading">Loading geographic data…</div>,
-});
+type Message = { id: string; role: "user" | "assistant"; content: string; createdAt: number };
+type Chat = { id: string; title: string; messages: Message[]; updatedAt: number };
 
-const ImageryExplorer = dynamic(() => import("@/components/ImageryExplorer"), { ssr: false, loading: () => <div className="map-loading">Preparing NASA imagery layer…</div> });
-
-type Article = { id: string; title: string; url: string; domain: string; language: string; seen: string; image: string | null };
-type Section = "overview" | "global" | "nuclear" | "observatories" | "defence" | "finance" | "analyst";
-type Source = { name: string; url: string; note?: string };
-
-const nav: { id: Section; label: string; group: string; icon: typeof Activity }[] = [
-  { id: "overview", label: "Executive overview", group: "WORKSPACE", icon: Activity },
-  { id: "global", label: "Global monitor", group: "WORKSPACE", icon: Globe2 },
-  { id: "nuclear", label: "Nuclear observatory", group: "RESEARCH", icon: Atom },
-  { id: "observatories", label: "Public observatories", group: "RESEARCH", icon: RadioTower },
-  { id: "defence", label: "Defence & policy", group: "RESEARCH", icon: ShieldCheck },
-  { id: "finance", label: "Power & finance", group: "RESEARCH", icon: TrendingUp },
-  { id: "analyst", label: "X83 Analyst", group: "TOOLS", icon: Sparkles },
+const STORAGE_KEY = "sx83-chat-sessions-v1";
+const starterPrompts = [
+  "Explain a complex topic clearly",
+  "Research a question and compare evidence",
+  "Help me plan and structure a project",
 ];
 
-const cameraFeeds = [
-  {
-    id: "moscow",
-    title: "Moscow 24 · live city broadcast",
-    location: "Moscow, Russian Federation",
-    source: "Moscow 24 · official public broadcast",
-        kind: "LIVE CITY BROADCAST",
-    note: "Official broadcaster stream is not currently verified as embeddable here. This card remains disabled until a stable publisher-approved player is available.",
-  },
-  {
-    id: "washington",
-    title: "Washington Monument panorama",
-    location: "Washington, D.C., United States",
-    source: "EarthCam · public landmark stream",
-        kind: "PUBLIC LANDMARK",
-    note: "The official Washington Monument camera is publicly listed by the National Park Service, but its current publisher player is not available as a verified in-page embed here.",
-  },
-];
-
-const projectSources: Source[] = [
-  { name: "Global Nuclear Power Tracker", url: "https://globalenergymonitor.org/projects/global-nuclear-power-tracker/", note: "Publicly documented civilian reactor projects and construction records." },
-  { name: "IAEA Power Reactor Information System", url: "https://pris.iaea.org/PRIS/home.aspx", note: "Official reactor records, operating status and construction milestones." },
-  { name: "NASA Worldview", url: "https://worldview.earthdata.nasa.gov/", note: "Earth-observation layers and historical imagery dates." },
-  { name: "Copernicus Browser", url: "https://browser.dataspace.copernicus.eu/", note: "Public Sentinel satellite imagery and dated acquisitions." },
-  { name: "World Nuclear Industry Status Report", url: "https://www.worldnuclearreport.org/", note: "Independent research on nuclear energy status and projects." },
-];
-
-const policySources: Source[] = [
-  { name: "U.S. Department of Defense", url: "https://www.defense.gov/News/", note: "Official public releases and policy announcements." },
-  { name: "SIPRI", url: "https://www.sipri.org/", note: "Independent research on arms, disarmament and international security." },
-  { name: "United Nations Treaty Collection", url: "https://treaties.un.org/", note: "Published treaty records and multilateral agreements." },
-  { name: "EU Sanctions Map", url: "https://www.sanctionsmap.eu/", note: "Public sanctions and restrictive-measures information." },
-];
-
-const financeSources: Source[] = [
-  { name: "EU Transparency Register", url: "https://transparency-register.europa.eu/", note: "Declared interest representation and lobbying disclosures." },
-  { name: "OpenCorporates", url: "https://opencorporates.com/", note: "Searchable company registry data across jurisdictions." },
-  { name: "International Monetary Fund", url: "https://www.imf.org/", note: "Macroeconomic and financial stability research." },
-  { name: "Transparency International", url: "https://www.transparency.org/", note: "Governance, integrity and anti-corruption research." },
-];
-
-function SectionHeading({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {
-  return <div className="section-heading"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>{action}</div>;
-}
-
-function SourceCard({ source, onOpen, index }: { source: Source; onOpen: (source: Source) => void; index: number }) {
-  return <button className="source-card" onClick={() => onOpen(source)}><div className="source-card-top"><span>REF {String(index + 1).padStart(2, "0")}</span><ArrowUpRight size={15}/></div><h3>{source.name}</h3><p>{source.note}</p><span className="source-card-foot">OPEN IN RESEARCH VIEWER <ChevronRight size={13}/></span></button>;
+function makeId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 export default function Home() {
-  const [active, setActive] = useState<Section>("overview");
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [feedLoading, setFeedLoading] = useState(true);
-  const [feedUpdated, setFeedUpdated] = useState<string | null>(null);
-  const [filter, setFilter] = useState("");
-  const [query, setQuery] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [analystBusy, setAnalystBusy] = useState(false);
-  const [analystError, setAnalystError] = useState("");
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [navFilter, setNavFilter] = useState("");
-  const [clock, setClock] = useState("--:--:-- UTC");
-  const [viewer, setViewer] = useState<Source | null>(null);
-  const [sourceCopied, setSourceCopied] = useState(false);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [activeId, setActiveId] = useState("");
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [copiedId, setCopiedId] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  async function loadBriefings() {
-    setFeedLoading(true);
+  const activeChat = chats.find((chat) => chat.id === activeId) || null;
+  const messages = activeChat?.messages || [];
+
+  useEffect(() => {
     try {
-      const response = await fetch("/api/briefings", { cache: "no-store" });
-      const data = await response.json();
-      setArticles(Array.isArray(data.articles) ? data.articles : []);
-      setFeedUpdated(data.updatedAt || new Date().toISOString());
-    } catch { setArticles([]); }
-    finally { setFeedLoading(false); }
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Chat[];
+        if (Array.isArray(parsed)) {
+          setChats(parsed);
+          if (parsed.length) setActiveId(parsed[0].id);
+        }
+      }
+    } catch {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (loaded) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+  }, [chats, loaded]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: sending ? "smooth" : "auto", block: "end" });
+  }, [messages.length, sending]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSidebarOpen(true);
+        window.setTimeout(() => document.getElementById("chat-search")?.focus(), 80);
+      }
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+        setMenuOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  function createChat() {
+    const chat: Chat = { id: makeId(), title: "New chat", messages: [], updatedAt: Date.now() };
+    setChats((current) => [chat, ...current]);
+    setActiveId(chat.id);
+    setInput("");
+    setError("");
+    setSidebarOpen(false);
+    window.setTimeout(() => textareaRef.current?.focus(), 50);
   }
 
-  useEffect(() => {
-    const tick = () => setClock(new Date().toISOString().slice(11, 19) + " UTC");
-    tick();
-    const timer = window.setInterval(tick, 1000);
-    void loadBriefings();
-    return () => window.clearInterval(timer);
-  }, []);
+  function selectChat(id: string) {
+    setActiveId(id);
+    setSidebarOpen(false);
+    setError("");
+  }
 
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) { if (event.key === "Escape") setViewer(null); }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  async function sendMessage(text?: string) {
+    const content = (text ?? input).trim();
+    if (!content || sending) return;
+    let chatId = activeId;
+    let baseChat = activeChat;
+    if (!baseChat) {
+      chatId = makeId();
+      baseChat = { id: chatId, title: content.slice(0, 42), messages: [], updatedAt: Date.now() };
+      setActiveId(chatId);
+    }
 
-  const currentNav = nav.find((item) => item.id === active);
-  const filteredNav = useMemo(() => nav.filter((item) => (item.label + " " + item.group).toLowerCase().includes(navFilter.trim().toLowerCase())), [navFilter]);
-  const filteredArticles = useMemo(() => articles.filter((article) => (article.title + " " + article.domain).toLowerCase().includes(filter.toLowerCase())), [articles, filter]);
+    const userMessage: Message = { id: makeId(), role: "user", content, createdAt: Date.now() };
+    const nextMessages = [...baseChat.messages, userMessage];
+    const title = baseChat.messages.length ? baseChat.title : content.replace(/\s+/g, " ").slice(0, 42);
+    const updatedChat: Chat = { ...baseChat, id: chatId, title, messages: nextMessages, updatedAt: Date.now() };
+    setChats((current) => [updatedChat, ...current.filter((chat) => chat.id !== chatId)]);
+    setInput("");
+    setError("");
+    setSending(true);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-  async function askAnalyst(event: React.FormEvent<HTMLFormElement>) {
+    try {
+      const response = await fetch("/api/analyst", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: nextMessages.slice(-20).map(({ role, content: messageContent }) => ({ role, content: messageContent })),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "The assistant could not respond.");
+      const assistantMessage: Message = {
+        id: makeId(),
+        role: "assistant",
+        content: data.answer || "No response was returned.",
+        createdAt: Date.now(),
+      };
+      setChats((current) => current.map((chat) => chat.id === chatId
+        ? { ...chat, messages: [...chat.messages, assistantMessage], updatedAt: Date.now() }
+        : chat));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Connection failed. Try again.");
+    } finally {
+      setSending(false);
+      window.setTimeout(() => textareaRef.current?.focus(), 30);
+    }
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setAnalystBusy(true); setAnalystError(""); setAnswer("");
-    try {
-      const response = await fetch("/api/analyst", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: query }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Analyst request failed.");
-      setAnswer(data.answer || "No analysis returned.");
-    } catch (error) { setAnalystError(error instanceof Error ? error.message : "Unable to reach analyst."); }
-    finally { setAnalystBusy(false); }
+    void sendMessage();
   }
 
-  function go(section: Section) { setActive(section); setMobileOpen(false); }
-  const openSource = (source: Source) => { setViewer(source); setSourceCopied(false); };
-  async function copySourceAddress() { if (!viewer) return; try { await navigator.clipboard.writeText(viewer.url); setSourceCopied(true); } catch { setSourceCopied(false); } }
+  function handleInputKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      void sendMessage();
+    }
+  }
 
-  return <main className="app-shell">
-    <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`}>
-      <div className="brand">
-        <div className="brand-symbol"><span>SX</span><b>83</b></div>
-        <div className="brand-copy"><strong>SECTORX83</strong><small>RESEARCH & ANALYSIS</small></div>
-        <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={18}/></button>
-      </div>
-      <div className="workspace-switch"><div className="workspace-icon">X</div><div><strong>Research workspace</strong><small>Independent network</small></div><ChevronDown size={14}/></div>
-      <div className="nav-filter"><Search size={14}/><input aria-label="Find a navigation section" placeholder="Find a section…" value={navFilter} onChange={(event) => setNavFilter(event.target.value)}/><kbd>/</kbd></div>{["WORKSPACE", "RESEARCH", "TOOLS"].map((group) => { const items = filteredNav.filter((item) => item.group === group); return items.length ? <div className="nav-group" key={group}><div className="nav-label">{group}<span>{String(items.length).padStart(2, "0")}</span></div>{items.map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => go(item.id)} aria-current={active === item.id ? "page" : undefined} className={`nav-item ${active === item.id ? "active" : ""}`}><Icon size={17}/><span>{item.label}</span>{item.id === "analyst" && <span className="nav-ai">AI</span>}</button>; })}</div> : null; })}{filteredNav.length === 0 && <div className="nav-empty">No matching sections.</div>}
-      <div className="sidebar-bottom"><div className="system-card"><div><i className="status-pulse"/> PLATFORM STATUS</div><strong>Research environment</strong><small>Public-source data layer · Phase 2</small></div><div className="user-row"><div className="avatar">SX</div><div><strong>SectorX83</strong><small>Independent research network</small></div><span className="user-state">ACTIVE</span></div></div>
-    </aside>
-    {mobileOpen && <button className="mobile-scrim" onClick={() => setMobileOpen(false)} aria-label="Close menu"/>}
-    <section className="main-area">
-      <header className="topbar"><div className="topbar-left"><button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu size={19}/></button><div className="breadcrumb"><span>SECTORX83</span><ChevronRight size={13}/><strong>{currentNav?.label.toUpperCase()}</strong></div></div><div className="topbar-right"><div className="clock"><Clock3 size={14}/>{clock}</div><span className="top-divider"/><span className="topbar-status"><i className="status-pulse"/> PUBLIC DATA</span><button className="icon-button" aria-label="Notifications"><Bell size={17}/></button><div className="avatar avatar-small">SX</div></div></header>
-      <div className="content-wrap">
-        {active === "overview" && <>
-          <div className="welcome-row"><div><div className="eyebrow">INDEPENDENT RESEARCH NETWORK <span className="eyebrow-sep">/</span> GLOBAL DESK</div><h1>Executive overview</h1><p className="welcome-copy">A structured view of public developments, institutions and global systems.</p></div><div className="date-stamp"><span>REFERENCE TIME</span><strong>{new Date().toISOString().slice(0, 10)}</strong><small>UTC · UPDATED {feedUpdated ? new Date(feedUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "PENDING"}</small></div></div>
-          <div className="stat-grid"><div className="stat-card"><div className="stat-head">PUBLIC REPORTS <Newspaper size={16}/></div><div className="stat-value">{articles.length ? String(articles.length).padStart(2, "0") : "—"}</div><div className="stat-foot">Institutional and news feeds</div></div><div className="stat-card"><div className="stat-head">REFERENCE SOURCES <Database size={16}/></div><div className="stat-value">{String(researchSources.length).padStart(2, "0")}</div><div className="stat-foot">Curated research catalog</div></div><div className="stat-card"><div className="stat-head">NUCLEAR PROJECTS <Atom size={16}/></div><div className="stat-value">OPEN DATA</div><div className="stat-foot">Civil-energy records and imagery</div></div><div className="stat-card"><div className="stat-head">ANALYST ENGINE <Sparkles size={16}/></div><div className="stat-value">STAGED</div><div className="stat-foot">Groq activation · Phase 2</div></div></div>
-          <div className="overview-grid"><div className="panel map-panel"><div className="panel-header"><div><div className="eyebrow">GEOGRAPHIC REFERENCE</div><h2>Global context</h2></div><button className="text-action" onClick={() => go("global")}>EXPAND MAP <ArrowUpRight size={14}/></button></div><WorldMap compact/><div className="panel-foot"><span>Map: OpenStreetMap</span><span>Reference locations only</span></div></div><div className="panel brief-panel"><div className="panel-header"><div><div className="eyebrow">CURRENT REPORTING</div><h2>Latest briefings</h2></div><button className="icon-button subtle" onClick={() => void loadBriefings()} aria-label="Refresh briefings"><RefreshCw size={15}/></button></div>{feedLoading ? <div className="empty-state">Loading institutional and public reports…</div> : articles.slice(0, 5).map((article, i) => <button className="brief-row" key={article.id} onClick={() => openSource({ name: article.title, url: article.url, note: article.domain + " · " + (article.seen || "Publication date not supplied") })}><span className="brief-index">{String(i + 1).padStart(2, "0")}</span><span className="brief-main"><strong>{article.title}</strong><small>{article.domain} · {article.seen || "Date not supplied"}</small></span><ArrowUpRight size={14}/></button>)}{!feedLoading && articles.length === 0 && <div className="empty-state">The public feed is temporarily unavailable. Refresh to retry.</div>}<div className="panel-foot"><span>IAEA · SIPRI · UN News</span><span>{feedUpdated ? new Date(feedUpdated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Awaiting update"}</span></div></div></div>
-          <div className="lower-grid"><div className="panel"><div className="panel-header"><div><div className="eyebrow">RESEARCH AREAS</div><h2>Monitoring desks</h2></div></div><div className="desk-list"><button onClick={() => go("nuclear")}><span className="desk-icon"><Atom size={18}/></span><span><strong>Nuclear observatory</strong><small>Civil projects, reactor records and satellite imagery</small></span><ChevronRight size={16}/></button><button onClick={() => go("observatories")}><span className="desk-icon"><RadioTower size={18}/></span><span><strong>Public observatories</strong><small>Embedded public city cameras and broadcasts</small></span><ChevronRight size={16}/></button><button onClick={() => go("defence")}><span className="desk-icon"><ShieldCheck size={18}/></span><span><strong>Defence & policy</strong><small>Official announcements and attributed reporting</small></span><ChevronRight size={16}/></button><button onClick={() => go("finance")}><span className="desk-icon"><Landmark size={18}/></span><span><strong>Power & finance</strong><small>Public records, ownership and institutional influence</small></span><ChevronRight size={16}/></button></div></div><div className="panel analyst-teaser"><div className="eyebrow">RESEARCH ASSISTANT</div><div className="analyst-symbol"><Sparkles size={22}/></div><h2>X83 Analyst</h2><p>Compare public claims, organise evidence and prepare source-linked research briefings.</p><button className="primary-button" onClick={() => go("analyst")}>Open analyst <ArrowUpRight size={15}/></button><small className="phase-note">GROQ CONNECTION · PHASE 2</small></div></div>
-        </>}
-        {active === "global" && <><SectionHeading eyebrow="01 / GEOGRAPHIC REFERENCE" title="Global monitor" description="A real, navigable geographic basemap with selected institutional reference points. No simulated events or fabricated live positions."/><div className="panel large-map-panel"><div className="panel-header"><div><div className="eyebrow">WORLD REFERENCE LAYER</div><h2>Geographic overview</h2></div><span className="tag">LIVE MAP TILES</span></div><WorldMap/><div className="map-note">Map tiles are provided by OpenStreetMap contributors and CARTO. Pins mark public research and government reference cities only, not military units, facilities or operational activity.</div></div><div className="panel feed-panel"><div className="panel-header"><div><div className="eyebrow">ATTRIBUTED PUBLIC REPORTING</div><h2>Recent reporting</h2></div><div className="search-box"><Search size={15}/><input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter headlines…"/></div></div>{filteredArticles.map((article) => <button className="article-row" key={article.id} onClick={() => openSource({ name: article.title, url: article.url, note: article.domain + " · " + (article.seen || "Date not supplied") })}><div><strong>{article.title}</strong><small>{article.domain} · {article.language} · {article.seen || "Date not supplied"}</small></div><ArrowUpRight size={15}/></button>)}{!filteredArticles.length && <div className="empty-state">No matching reports.</div>}</div></>}
-        {active === "nuclear" && <><SectionHeading eyebrow="02 / CIVIL NUCLEAR RESEARCH" title="Nuclear observatory" description="Public civil-energy projects, reactor records and dated Earth-observation imagery." action={<span className="tag tag-red"><Atom size={13}/> OPEN DATA</span>}/><div className="nuclear-hero"><div className="nuclear-hero-copy"><div className="eyebrow">PROJECT INTELLIGENCE / EARTH OBSERVATION</div><h2>Track the documented lifecycle of nuclear energy.</h2><p>Review public project records and inspect satellite imagery within this workspace. Every image and milestone must retain its source, date and verification status.</p><div className="hero-meta"><span><ShieldCheck size={14}/> Civil-energy scope</span><span><CalendarClock size={14}/> Dated source records</span></div></div><div className="nuclear-visual"><div className="nuclear-orbit"/><div className="nuclear-orbit orbit-two"/><Atom size={76} strokeWidth={1}/><span>EARTH OBSERVATION</span></div></div><div className="section-subhead"><div><div className="eyebrow">EMBEDDED DATA TOOLS</div><h2>Earth imagery workspace</h2></div><span className="tag">IN-PAGE VIEWERS</span></div><ImageryExplorer/><div className="section-subhead"><div><div className="eyebrow">REFERENCE DATABASES</div><h2>Project and policy sources</h2></div></div><div className="source-grid">{projectSources.map((source, i) => <SourceCard key={source.name} source={source} index={i} onOpen={openSource}/>)}</div><div className="notice-panel"><ShieldCheck size={18}/><p><strong>Research boundary.</strong> This desk covers publicly documented civilian energy and research projects, published policy and non-operational imagery. It does not provide weapons-site surveillance, facility vulnerabilities or operational targeting data.</p></div></>}
-        {active === "observatories" && <><SectionHeading eyebrow="03 / PUBLIC VISUAL SOURCES" title="Public observatories" description="Publisher-verified public feeds only. Unavailable or non-embeddable streams are clearly marked rather than shown as broken players."/><div className="observatory-intro"><div><div className="eyebrow">VISUAL REFERENCE DESK</div><h2>Live public views. In-context viewing.</h2><p>Streams are supplied by their publishers. If a publisher disables embedding or a stream goes offline, the player will show its own availability state.</p></div><div className="observatory-meta"><span><i className="status-pulse"/> EMBEDDED PLAYERS</span><small>Publisher-controlled availability</small></div></div><div className="camera-grid">{cameraFeeds.map((camera) => <div className="camera-card" key={camera.id}><div className="camera-head"><div><span className="camera-kicker">{camera.kind}</span><h3>{camera.title}</h3><p>{camera.location}</p></div><span className="camera-status">STREAM UNAVAILABLE</span></div><div className="camera-unavailable"><div className="camera-placeholder-mark"><RadioTower size={28}/></div><strong>EMBEDDING NOT AVAILABLE</strong><span>The publisher does not currently provide a verified working in-page stream for this feed. The broken player has been disabled.</span></div><div className="camera-foot"><span>{camera.source}</span><span>Embedded viewer</span></div><p className="camera-note">{camera.note}</p></div>)}</div><div className="notice-panel"><CircleDot size={18}/><p><strong>Location and access note.</strong> These are public city or landmark views. There is no public direct camera feed of the Pentagon or Kremlin interior/secure grounds, and this dashboard will not invent one. The Washington Monument view is a public National Mall panorama, not a Pentagon feed.</p></div></>}
-        {active === "defence" && <><SectionHeading eyebrow="04 / SECURITY & INSTITUTIONS" title="Defence & policy" description="Official announcements, public defence policy, procurement disclosures, treaties and attributed research."/><div className="topic-grid">{policySources.map((source, i) => <SourceCard key={source.name} source={source} index={i} onOpen={openSource}/>)}</div><div className="panel feed-panel"><div className="panel-header"><div><div className="eyebrow">ATTRIBUTED PUBLIC REPORTING</div><h2>Latest indexed reports</h2></div><button className="secondary-button compact" onClick={() => void loadBriefings()}><RefreshCw size={14}/> Refresh</button></div>{articles.slice(0, 10).map((article) => <button className="article-row" key={article.id} onClick={() => openSource({ name: article.title, url: article.url, note: article.domain + " · " + (article.seen || "Date not supplied") })}><div><strong>{article.title}</strong><small>{article.domain} · {article.seen || "Date not supplied"}</small></div><ArrowUpRight size={15}/></button>)}</div></>}
-        {active === "finance" && <><SectionHeading eyebrow="05 / INSTITUTIONS & CAPITAL" title="Power & finance" description="Evidence-led research into wealth concentration, corporate ownership, lobbying disclosures and institutional influence."/><div className="finance-banner"><Building2 size={28}/><div><strong>Institutional influence research</strong><p>Follow documented relationships through filings, registers, funding disclosures and public records. Separate evidence from inference.</p></div></div><div className="source-grid">{financeSources.map((source, i) => <SourceCard key={source.name} source={source} index={i} onOpen={openSource}/>)}</div><div className="notice-panel"><FileText size={18}/><p><strong>Research standard.</strong> Every claim should identify the underlying filing, date, jurisdiction and source. Family names or organisations are not evidence of secret control by themselves.</p></div></>}
-        {active === "analyst" && <><SectionHeading eyebrow="06 / AI RESEARCH ASSISTANT" title="X83 Analyst" description="A source-conscious research assistant for comparing public claims, summarising policy and organising evidence." action={<span className="tag tag-red"><Sparkles size={13}/> GROQ / PHASE 2</span>}/><div className="analyst-layout"><div className="panel analyst-main"><div className="analyst-header"><div className="analyst-avatar"><Sparkles size={22}/></div><div><h2>Analyst workspace</h2><p>Separate verified facts, attributed claims and interpretation.</p></div><span className="status-pill pending">ENGINE STAGED</span></div><form className="analyst-form" onSubmit={askAnalyst}><label htmlFor="analyst-query">RESEARCH QUESTION</label><textarea id="analyst-query" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Compare public nuclear energy policy announcements and identify the original sources." rows={5}/><div className="form-bottom"><span>Do not submit sensitive personal or operational information.</span><button className="primary-button" disabled={analystBusy || !query.trim()}>{analystBusy ? "Analysing…" : "Run analysis"} <Sparkles size={14}/></button></div></form>{analystError && <div className="error-message">{analystError}</div>}{answer && <div className="answer-block"><div className="eyebrow">ANALYST RESPONSE</div><p>{answer}</p><small>AI-generated analysis. Verify material claims against original sources.</small></div>}<div className="prompt-chips"><button type="button" onClick={() => setQuery("Summarise recent public civil nuclear energy policy developments and identify original sources.")}>Civil nuclear policy</button><button type="button" onClick={() => setQuery("Compare recent official defence policy announcements and identify differences.")}>Defence policy comparison</button><button type="button" onClick={() => setQuery("Explain public lobbying disclosure systems and how to evaluate institutional influence claims.")}>Institutional influence</button></div></div><div className="panel analyst-side"><div className="eyebrow">ANALYSIS STANDARD</div><h3>Evidence before inference.</h3><ul><li>Source attribution</li><li>Publication dates</li><li>Fact / claim separation</li><li>Contradiction review</li><li>Uncertainty disclosure</li></ul><div className="analyst-side-foot"><ZapIcon/><span>Groq API key is configured server-side in Phase 2. Never expose it in the browser.</span></div></div></div></>}
-        <footer className="app-footer"><span>SECTORX83 <b>·</b> INDEPENDENT RESEARCH NETWORK</span><span>PHASE 2 NETWORK FOUNDATION <b>·</b> {new Date().getFullYear()}</span></footer>
-      </div>
-    </section>
-    {viewer && <div className="viewer-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setViewer(null); }}><section className="source-viewer" role="dialog" aria-modal="true" aria-label={viewer.name}><div className="viewer-header"><div><div className="eyebrow">IN-APP SOURCE VIEWER</div><h2>{viewer.name}</h2><p>{viewer.note || viewer.url}</p></div><button className="icon-button" onClick={() => setViewer(null)} aria-label="Close source viewer"><X size={19}/></button></div><div className="viewer-dossier"><div className="viewer-dossier-icon"><FileText size={28}/></div><h3>Source record</h3><p>{viewer.note || "Publisher source saved in the SectorX83 research catalog."}</p><div className="viewer-url-label">PUBLISHER ADDRESS</div><code>{viewer.url}</code><button className="secondary-button compact" onClick={() => void copySourceAddress()}>{sourceCopied ? "Address copied" : "Copy source address"}</button><div className="viewer-footnote">This publisher does not expose a reliable in-page preview. SectorX83 will not display a blank frame or pretend the page has loaded.</div></div></section></div>}
-  </main>;
+  function resizeInput(element: HTMLTextAreaElement) {
+    element.style.height = "auto";
+    element.style.height = Math.min(element.scrollHeight, 190) + "px";
+  }
+
+  function deleteCurrentChat() {
+    if (!activeChat) return;
+    const remaining = chats.filter((chat) => chat.id !== activeChat.id);
+    setChats(remaining);
+    setActiveId(remaining[0]?.id || "");
+    setMenuOpen(false);
+  }
+
+  async function copyMessage(message: Message) {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopiedId(message.id);
+      window.setTimeout(() => setCopiedId(""), 1500);
+    } catch {
+      setError("Clipboard access is unavailable in this browser.");
+    }
+  }
+
+  const visibleChats = chats.filter((chat) => chat.title.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <main className="chat-app">
+      <aside className={"chat-sidebar" + (sidebarOpen ? " is-open" : "")}>
+        <div className="sidebar-top">
+          <a className="sx-brand" href="/" aria-label="SX83 home">
+            <span className="sx-brand-mark">SX<span>83</span></span>
+            <span className="sx-brand-name">SX83<small>INTELLIGENCE, IN CONVERSATION</small></span>
+          </a>
+          <button className="sidebar-icon mobile-only" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar"><X size={18}/></button>
+        </div>
+        <button className="new-chat-button" onClick={createChat}>
+          <SquarePen size={16}/><span>New chat</span><kbd>⌘ K</kbd>
+        </button>
+        <div className="history-label">YOUR CONVERSATIONS</div>
+        <label className="history-search">
+          <Search size={15}/>
+          <input id="chat-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search chats"/>
+        </label>
+        <div className="chat-history">
+          {visibleChats.map((chat) => (
+            <button key={chat.id} className={"history-item" + (chat.id === activeId ? " selected" : "")} onClick={() => selectChat(chat.id)}>
+              <MessageSquare size={15}/><span>{chat.title}</span>
+            </button>
+          ))}
+          {visibleChats.length === 0 && <div className="history-empty">{chats.length ? "No matching conversations" : "Your conversations will appear here."}</div>}
+        </div>
+        <div className="sidebar-bottom">
+          <div className="sidebar-divider"/>
+          <div className="account-row">
+            <div className="account-avatar">83</div>
+            <div className="account-copy"><strong>SectorX83</strong><span>Personal workspace</span></div>
+            <span className="account-indicator"/>
+          </div>
+        </div>
+      </aside>
+
+      {sidebarOpen && <button className="sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar"/>}
+
+      <section className="chat-main">
+        <header className="chat-topbar">
+          <div className="topbar-start">
+            <button className="sidebar-icon" onClick={() => setSidebarOpen(true)} aria-label="Open conversations"><Menu size={19}/></button>
+            <div className="topbar-brand">SX83 <span>/</span> <strong>{activeChat?.title || "New conversation"}</strong></div>
+          </div>
+          <div className="topbar-end">
+            <div className="model-indicator"><span/> X83 RESEARCH</div>
+            {activeChat && <div className="chat-menu-wrap">
+              <button className="sidebar-icon" onClick={() => setMenuOpen((open) => !open)} aria-label="Conversation options"><MoreHorizontal size={19}/></button>
+              {menuOpen && <div className="chat-menu"><button onClick={deleteCurrentChat}>Delete conversation</button></div>}
+            </div>}
+          </div>
+        </header>
+
+        <div className={"conversation-area" + (messages.length === 0 ? " is-empty" : "")}>
+          {messages.length === 0 ? (
+            <div className="welcome-screen">
+              <div className="welcome-emblem"><Sparkles size={23}/></div>
+              <div className="welcome-kicker">SECTORX83 · RESEARCH ASSISTANT</div>
+              <h1>What are we<br/><span>thinking about?</span></h1>
+              <p className="welcome-description">A clear space to ask, explore, build, and work through ideas.</p>
+              <div className="starter-grid">
+                {starterPrompts.map((prompt) => <button key={prompt} onClick={() => void sendMessage(prompt)}><span>{prompt}</span><ArrowUp size={15}/></button>)}
+              </div>
+            </div>
+          ) : (
+            <div className="message-list">
+              {messages.map((message) => (
+                <article key={message.id} className={"message-row " + message.role}>
+                  {message.role === "assistant" && <div className="message-avatar"><Sparkles size={15}/></div>}
+                  <div className="message-content">
+                    <div className="message-author">{message.role === "user" ? "YOU" : "SX83"}</div>
+                    <div className="message-text">{message.content}</div>
+                    {message.role === "assistant" && <div className="message-actions">
+                      <button onClick={() => void copyMessage(message)} aria-label="Copy response">{copiedId === message.id ? <Check size={14}/> : <span className="copy-glyph">▢</span>}{copiedId === message.id ? "Copied" : "Copy"}</button>
+                    </div>}
+                  </div>
+                </article>
+              ))}
+              {sending && <article className="message-row assistant"><div className="message-avatar"><Sparkles size={15}/></div><div className="message-content"><div className="message-author">SX83</div><div className="thinking-indicator"><i/><i/><i/><span>Thinking</span></div></div></article>}
+              <div ref={bottomRef}/>
+            </div>
+          )}
+        </div>
+
+        <div className="composer-zone">
+          {error && <div className="chat-error"><span>{error}</span><button onClick={() => setError("")} aria-label="Dismiss error"><X size={14}/></button></div>}
+          <form className="composer" onSubmit={handleSubmit}>
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(event) => { setInput(event.target.value); resizeInput(event.currentTarget); }}
+              onKeyDown={handleInputKeyDown}
+              placeholder="Message SX83…"
+              rows={1}
+              aria-label="Message SX83"
+              disabled={sending}
+            />
+            <div className="composer-footer">
+              <div className="composer-hint"><span className="composer-spark"><Sparkles size={13}/></span><span>Clear questions get better answers</span></div>
+              <div className="composer-controls"><span className="enter-hint">ENTER TO SEND</span><button className="send-button" type="submit" disabled={!input.trim() || sending} aria-label="Send message">{sending ? <span className="send-spinner"/> : <ArrowUp size={17}/>}</button></div>
+            </div>
+          </form>
+          <div className="disclaimer">SX83 can make mistakes. Verify important information with reliable sources.</div>
+        </div>
+      </section>
+    </main>
+  );
 }
-
-function ZapIcon() { return <Sparkles size={16}/>; }
