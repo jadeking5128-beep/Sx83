@@ -471,7 +471,7 @@ export default function CommunityPage() {
       {error && <div className="sx-alert error">{error}<button onClick={() => setError("")}><X size={14}/></button></div>}
       {notice && <div className="sx-alert success">{notice}<button onClick={() => setNotice("")}><X size={14}/></button></div>}
 
-      <div className="sx-messenger-layout">
+      <div className={"sx-messenger-layout " + (!showMembers ? "members-hidden" : "")}>
         <aside className="sx-inbox glass-panel">
           <div className="sx-inbox-head">
             <div><div className="sx-kicker">YOUR NETWORK</div><h2>Inbox</h2></div>
@@ -495,6 +495,10 @@ export default function CommunityPage() {
           <div className="sx-inbox-foot"><Users size={14}/>{profiles.length.toString().padStart(2, "0")} MEMBERS <span>·</span> {onlineIds.length.toString().padStart(2, "0")} ONLINE</div>
         </aside>
 
+        <div className="sx-mobile-contacts">
+          <button className={!activePeerId ? "active" : ""} onClick={() => switchConversation(null)}><MessageCircle size={15}/> Community</button>
+          {filteredMembers.map(person => <button key={person.id} className={activePeerId === person.id ? "active" : ""} onClick={() => switchConversation(person.id)}><span className="sx-mobile-contact-avatar">{person.avatar_url ? <img src={person.avatar_url} alt=""/> : initials(person.display_name)}</span>{person.display_name}{unread[person.id] > 0 && <i>{unread[person.id]}</i>}</button>)}
+        </div>
         <section className="sx-chat-panel sx-messenger-main glass-panel">
           <div className="sx-chat-topline">
             <div className="sx-chat-title">
