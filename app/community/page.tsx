@@ -619,10 +619,6 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
           <div className="sx-inbox-foot"><Users size={14}/>{profiles.length.toString().padStart(2, "0")} MEMBERS <span>·</span> {onlineIds.length.toString().padStart(2, "0")} ONLINE</div>
         </aside>
 
-        <div className="sx-mobile-contacts">
-          {initialView === "messages" && <button className={!activePeerId ? "active" : ""} onClick={() => switchConversation(null)}><MessageCircle size={15}/> Community</button>}
-          {filteredMembers.map(person => <button key={person.id} className={activePeerId === person.id ? "active" : ""} onClick={() => switchConversation(person.id)}><span className="sx-mobile-contact-avatar">{person.avatar_url ? <img src={person.avatar_url} alt=""/> : initials(person.display_name)}</span>{person.display_name}{unread[person.id] > 0 && <i>{unread[person.id]}</i>}</button>)}
-        </div>
         {initialView === "dms" && !activePeerId ? <section className="sx-chat-panel sx-messenger-main glass-panel"><div className="sx-chat-empty">{filteredMembers.length ? "Choose a member to start a private conversation." : "No other members are available yet."}</div></section> : <section className="sx-chat-panel sx-messenger-main glass-panel">
           <div className="sx-chat-topline">
             <div className="sx-chat-title">
