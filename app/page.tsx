@@ -185,7 +185,7 @@ export default function Home() {
           <Link className="sx-brand" href="/" aria-label="SX83 home">
             <span className="sx-brand-mark">SX<span>83</span></span>
             <span className="sx-brand-name">SX83<small>INTELLIGENCE, IN CONVERSATION</small></span>
-          </a>
+          </Link>
           <button className="sidebar-icon mobile-only" onClick={() => setSidebarOpen(false)} aria-label="Close sidebar"><X size={18}/></button>
         </div>
         <button className="new-chat-button" onClick={createChat}>
