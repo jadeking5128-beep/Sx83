@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 
-export const viewport: Viewport = { themeColor: "#080808", colorScheme: "dark", width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { themeColor: "#0b0b0a", colorScheme: "dark", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="en"><body>{children}<PhaseTwoDock /></body></html>;
