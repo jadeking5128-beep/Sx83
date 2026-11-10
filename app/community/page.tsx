@@ -57,6 +57,7 @@ export default function CommunityPage() {
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
   const [unread, setUnread] = useState<Record<string, number>>({});
+  const [lastMessages, setLastMessages] = useState<Record<string, InboxMessage>>({});
   const [onlineIds, setOnlineIds] = useState<string[]>([]);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [chatText, setChatText] = useState("");
@@ -91,8 +92,9 @@ export default function CommunityPage() {
   }, [messages, searchText]);
   const filteredMembers = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
-    return profiles.filter(person => person.id !== userId && (!query || person.display_name.toLowerCase().includes(query) || person.username.toLowerCase().includes(query)));
-  }, [profiles, memberSearch, userId]);
+    return profiles.filter(person => person.id !== userId && (!query || person.display_name.toLowerCase().includes(query) || person.username.toLowerCase().includes(query)))
+      .sort((a, b) => (lastMessages[b.id]?.created_at || "").localeCompare(lastMessages[a.id]?.created_at || "") || a.display_name.localeCompare(b.display_name));
+  }, [profiles, memberSearch, userId, lastMessages]);
 
   const hydrateMessages = useCallback(async (rows: ChatMessage[]) => {
     const supabase = getSupabase();
@@ -110,11 +112,14 @@ export default function CommunityPage() {
       .or("sender_id.eq." + uid + ",recipient_id.eq." + uid)
       .order("created_at", { ascending: false }).limit(500);
     const counts: Record<string, number> = {};
+    const latest: Record<string, InboxMessage> = {};
     ((data || []) as InboxMessage[]).forEach(row => {
       const peer = row.sender_id === uid ? row.recipient_id : row.sender_id;
+      if (!latest[peer]) latest[peer] = row;
       if (row.recipient_id === uid && !row.read_at) counts[peer] = (counts[peer] || 0) + 1;
     });
     setUnread(counts);
+    setLastMessages(latest);
   }, []);
 
   const loadMessages = useCallback(async (peerId: string | null, uid = userId) => {
@@ -238,7 +243,7 @@ export default function CommunityPage() {
       }
     }).subscribe();
     typingChannelRef.current = channel;
-    return () => { typingChannelRef.current = null; void supabase.removeChannel(channel); };
+    return () => { typingChannelRef.current = null; if (typingTimerRef.current) clearTimeout(typingTimerRef.current); void supabase.removeChannel(channel); };
   }, [userId, context]);
 
   useEffect(() => {
@@ -482,7 +487,7 @@ export default function CommunityPage() {
           <div className="sx-inbox-list">
             {filteredMembers.map(person => <button key={person.id} className={"sx-inbox-person " + (activePeerId === person.id ? "active" : "")} onClick={() => switchConversation(person.id)}>
               <span className="sx-avatar-wrap"><span className="sx-avatar">{person.avatar_url ? <img src={person.avatar_url} alt=""/> : initials(person.display_name)}</span><i className={onlineIds.includes(person.id) ? "online" : ""}/></span>
-              <span className="sx-inbox-copy"><strong>{person.display_name}</strong><small>@{person.username}</small></span>
+              <span className="sx-inbox-copy"><strong>{person.display_name}</strong><small>{lastMessages[person.id]?.body || ("@" + person.username)}</small></span>
               {unread[person.id] > 0 && <span className="sx-unread-count">{unread[person.id] > 99 ? "99+" : unread[person.id]}</span>}
             </button>)}
             {!filteredMembers.length && <p className="sx-inbox-empty">No members found.</p>}
