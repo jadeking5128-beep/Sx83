@@ -139,6 +139,14 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
     });
     setUnread(counts);
     setLastMessages(latest);
+    const [requests, outgoing, notices] = await Promise.all([
+      supabase.from("dm_requests").select("*").eq("recipient_id", uid).eq("status", "pending").order("created_at", { ascending: false }).limit(30),
+      supabase.from("dm_requests").select("recipient_id").eq("sender_id", uid).eq("status", "pending"),
+      supabase.from("community_announcements").select("id,title,body,created_at,pinned").order("pinned", { ascending: false }).order("created_at", { ascending: false }).limit(5)
+    ]);
+    if (requests.data) setIncomingRequests(requests.data as DMRequest[]);
+    if (outgoing.data) setOutgoingRequestIds(outgoing.data.map((row: { recipient_id: string }) => row.recipient_id));
+    if (notices.data) setAnnouncements(notices.data as Announcement[]);
   }, []);
 
   const loadMessages = useCallback(async (peerId: string | null, uid = userId) => {
