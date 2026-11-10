@@ -28,8 +28,8 @@ export default function ImageryExplorer() {
     </div>
     <div className="sx-imagery-map">
       <MapContainer center={[27, 8]} zoom={2} minZoom={1} maxZoom={9} scrollWheelZoom zoomControl={false} worldCopyJump>
-        <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19}/>
-        <TileLayer attribution='Imagery: NASA GIBS / MODIS Terra' url={tileUrl} opacity={0.88} minZoom={1} maxZoom={9} />
+        <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={19} className="sx-osm-tiles"/>
+        <TileLayer attribution='Imagery: NASA GIBS / MODIS Terra' url={tileUrl} opacity={0.88} minZoom={1} maxZoom={9} className="sx-nasa-tiles" />
         <ZoomControl position="topright"/>
         {sites.map(site => <CircleMarker key={site.name} center={site.position} radius={5} pathOptions={{ color:"#e0d0a7",weight:1.5,fillColor:"#c7a66a",fillOpacity:.95 }}>
           <Tooltip direction="top"><strong>{site.name}</strong><br/>{site.region}<br/>{site.note}</Tooltip>
