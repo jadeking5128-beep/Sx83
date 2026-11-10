@@ -1659,4 +1659,16 @@ body {
 @media(prefers-reduced-motion:reduce){
   .sx-messenger *, .sx-messenger *::before, .sx-messenger *::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+.sx-messenger-layout.members-hidden{grid-template-columns:250px minmax(0,1fr)}
+.sx-mobile-contacts{display:none}
+.sx-mobile-contact-avatar{width:22px;height:22px;display:grid;place-items:center;overflow:hidden;flex:none;border:1px solid var(--msg-border);border-radius:7px;background:#293130;color:#dce5df;font:7px var(--mono)}
+.sx-mobile-contact-avatar img{width:100%;height:100%;object-fit:cover}
+.sx-mobile-contacts button i{min-width:16px;height:16px;padding:0 4px;display:grid;place-items:center;border-radius:20px;background:#d3ded7;color:#141a17;font:8px var(--mono);font-style:normal}
+@media(max-width:760px){
+  .sx-messenger-layout.members-hidden{grid-template-columns:1fr}
+  .sx-mobile-contacts{display:flex;align-items:center;gap:7px;overflow-x:auto;padding:8px 3px 10px;scrollbar-width:none}
+  .sx-mobile-contacts::-webkit-scrollbar{display:none}
+  .sx-mobile-contacts button{display:flex;align-items:center;gap:7px;flex:none;max-width:160px;min-height:34px;padding:0 10px;border:1px solid var(--msg-border);border-radius:20px;background:rgba(255,255,255,.035);color:#aeb9b3;font-size:9px;white-space:nowrap}
+  .sx-mobile-contacts button.active{background:rgba(220,232,224,.13);border-color:rgba(220,232,224,.25);color:#eef4ef}
+}
 
