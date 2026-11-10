@@ -349,7 +349,7 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
     else if (userId && initialView === "messages") void loadMessages(null);
     forceScrollRef.current = true;
     stickToBottomRef.current = true;
-    setReplyTarget(null); setEditTarget(null); setChatText(""); setSearchText("");
+    setReplyTarget(null); setEditTarget(null); setChatText(window.localStorage.getItem("sx83-draft-" + (activePeerId && userId ? pairContext(userId, activePeerId) : "community")) || ""); setSearchText("");
   }, [activePeerId, userId, loadMessages, initialView]);
 
   useEffect(() => {
@@ -403,7 +403,7 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
       : await supabase.from("community_messages").insert({ author_id: userId, body: body || "Attachment", reply_to_id: replyTarget?.id || null });
     const insertError = result.error;
     if (insertError) setError(insertError.message);
-    else { forceScrollRef.current = true; stickToBottomRef.current = true; setChatText(""); setReplyTarget(null); await loadMessages(activePeerId); }
+    else { forceScrollRef.current = true; stickToBottomRef.current = true; setChatText(""); window.localStorage.removeItem("sx83-draft-" + context); setReplyTarget(null); await loadMessages(activePeerId); }
     setBusy(false);
   }
 
@@ -743,7 +743,7 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
                 <button type="button" title="Record voice message" onClick={() => recording ? stopRecording() : void startRecording()} className={recording ? "recording" : ""}><Mic size={17}/></button>
                 <input ref={fileRef} type="file" hidden accept="image/*,application/pdf,text/plain,audio/*" onChange={event => { const file = event.target.files?.[0]; if (file) void uploadAttachment(file); event.currentTarget.value = ""; }}/>
               </div>
-              <textarea ref={inputRef} value={chatText} onChange={event => { setChatText(event.target.value); sendTyping(); }} onKeyDown={handleComposerKey} rows={1} maxLength={2000} placeholder={recording ? "Recording voice message…" : activePeer ? "Message " + activePeer.display_name + "…" : "Write to the community…"} aria-label="Message"/>
+              <textarea ref={inputRef} value={chatText} onChange={event => { setChatText(event.target.value); window.localStorage.setItem("sx83-draft-" + context, event.target.value); sendTyping(); }} onKeyDown={handleComposerKey} rows={1} maxLength={2000} placeholder={recording ? "Recording voice message…" : activePeer ? "Message " + activePeer.display_name + "…" : "Write to the community…"} aria-label="Message"/>
               {recording ? <button type="button" className="sx-send-button recording" onClick={stopRecording}><StopCircle size={17}/></button>
                 : <button className="sx-send-button" disabled={busy || !chatText.trim() || Boolean(activePeer && outgoingRequestIds.includes(activePeer.id) && !lastMessages[activePeer.id])} aria-label={editTarget ? "Save message" : "Send message"}>{busy ? <RefreshCw size={16} className="sx-spin"/> : editTarget ? <Check size={17}/> : <Send size={17}/>}</button>}
             </form>
