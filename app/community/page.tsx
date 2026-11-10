@@ -91,6 +91,9 @@ export default function CommunityPage() {
   const [, setNotificationsEnabled] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const chatLogRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
+  const forceScrollRef = useRef(true);
+  const loadRequestRef = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -140,10 +143,13 @@ export default function CommunityPage() {
       ? supabase.from("direct_messages").select("*")
           .or("and(sender_id.eq." + uid + ",recipient_id.eq." + peerId + "),and(sender_id.eq." + peerId + ",recipient_id.eq." + uid + ")")
           .order("created_at", { ascending: false }).limit(200)
-      : supabase.from("community_messages").select("*").order("created_at", { ascending: true }).limit(200);
+      : supabase.from("community_messages").select("*").order("created_at", { ascending: false }).limit(200);
+    const requestId = ++loadRequestRef.current;
     const { data, error: queryError } = await query;
+    if (requestId !== loadRequestRef.current) return;
     if (queryError) { setError(queryError.message); return; }
     const hydrated = await hydrateMessages([...((data || []) as ChatMessage[])].reverse());
+    if (requestId !== loadRequestRef.current) return;
     setMessages(hydrated);
     const ids = hydrated.map(message => message.id);
     if (ids.length) {
@@ -261,7 +267,12 @@ export default function CommunityPage() {
         void supabase.from("profiles").select("id,username,display_name,bio,location,website_url,avatar_url,skills,interests")
           .order("display_name").limit(200).then(({ data }) => { if (data) setProfiles(data); });
       })
-      .subscribe();
+      .subscribe(status => {
+        if (status === "SUBSCRIBED") {
+          void loadMessages(activePeerId);
+          void refreshInbox(userId);
+        }
+      });
     return () => { void supabase.removeChannel(channel); };
   }, [userId, activePeerId, loadMessages, refreshInbox, profiles, mutedIds, soundEnabled]);
 
@@ -298,12 +309,32 @@ export default function CommunityPage() {
 
   useEffect(() => {
     const log = chatLogRef.current;
-    if (log) log.scrollTo({ top: log.scrollHeight, behavior: "smooth" });
-  }, [messages, typingUsers]);
+    if (!log || (!stickToBottomRef.current && !forceScrollRef.current)) return;
+    log.scrollTo({ top: log.scrollHeight, behavior: "smooth" });
+    forceScrollRef.current = false;
+  }, [messages]);
+
+  useEffect(() => {
+    const refreshVisibleChat = () => {
+      if (document.visibilityState !== "visible" || !userId) return;
+      void loadMessages(activePeerId);
+      void refreshInbox(userId);
+    };
+    const interval = window.setInterval(refreshVisibleChat, 10000);
+    window.addEventListener("focus", refreshVisibleChat);
+    document.addEventListener("visibilitychange", refreshVisibleChat);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshVisibleChat);
+      document.removeEventListener("visibilitychange", refreshVisibleChat);
+    };
+  }, [userId, activePeerId, loadMessages, refreshInbox]);
 
   useEffect(() => {
     if (activePeerId) void loadMessages(activePeerId);
     else if (userId) void loadMessages(null);
+    forceScrollRef.current = true;
+    stickToBottomRef.current = true;
     setReplyTarget(null); setEditTarget(null); setChatText(""); setSearchText("");
   }, [activePeerId, userId, loadMessages]);
 
@@ -332,7 +363,7 @@ export default function CommunityPage() {
       : await supabase.from("community_messages").insert({ author_id: userId, body: body || "Attachment", reply_to_id: replyTarget?.id || null });
     const insertError = result.error;
     if (insertError) setError(insertError.message);
-    else { setChatText(""); setReplyTarget(null); }
+    else { forceScrollRef.current = true; stickToBottomRef.current = true; setChatText(""); setReplyTarget(null); }
     setBusy(false);
   }
 
@@ -357,7 +388,7 @@ export default function CommunityPage() {
     if (insertError) {
       setError(insertError.message);
       await getSupabase().storage.from(MEDIA_BUCKET).remove([path]);
-    } else { setChatText(""); setReplyTarget(null); }
+    } else { forceScrollRef.current = true; stickToBottomRef.current = true; setChatText(""); setReplyTarget(null); }
     setBusy(false);
   }
 
@@ -618,7 +649,7 @@ export default function CommunityPage() {
             if (pinned) chatLogRef.current?.querySelector('[data-message-id="' + pinned.id + '"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
           }}>JUMP TO PIN</button></div>}
 
-          <div className="sx-chat-log sx-messenger-log" ref={chatLogRef} aria-live="polite">
+          <div className="sx-chat-log sx-messenger-log" ref={chatLogRef} onScroll={event => { const node = event.currentTarget; stickToBottomRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 120; }} aria-live="polite">
             {loading ? <div className="sx-chat-loading"><span/><span/><span/> Connecting to SX83…</div> : visibleMessages.map(message => {
               const authorId = activePeerId ? message.sender_id : message.author_id;
               const author = memberMap.get(authorId || "");
