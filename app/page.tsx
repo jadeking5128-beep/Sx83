@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowUp, Check, Menu, MessageSquare, MoreHorizontal, Search, Sparkles, SquarePen, X,
@@ -181,7 +182,7 @@ export default function Home() {
     <main className="chat-app">
       <aside className={"chat-sidebar" + (sidebarOpen ? " is-open" : "")}>
         <div className="sidebar-top">
-          <a className="sx-brand" href="/" aria-label="SX83 home">
+          <Link className="sx-brand" href="/" aria-label="SX83 home">
             <span className="sx-brand-mark">SX<span>83</span></span>
             <span className="sx-brand-name">SX83<small>INTELLIGENCE, IN CONVERSATION</small></span>
           </a>
