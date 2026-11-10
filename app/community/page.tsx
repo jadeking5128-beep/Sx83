@@ -179,7 +179,7 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
     if (authError || !auth.user) { router.replace("/join"); return; }
     const uid = auth.user.id;
     setUserId(uid);
-    const [own, members, blocks, muted] = await Promise.all([
+    const [own, members, blocks, muted, requests, outgoing, announcementRows] = await Promise.all([
       supabase.from("profiles").select("id,username,display_name,bio,location,website_url,avatar_url,skills,interests").eq("id", uid).maybeSingle(),
       supabase.from("profiles").select("id,username,display_name,bio,location,website_url,avatar_url,skills,interests").order("display_name").limit(200),
       supabase.from("member_blocks").select("blocked_id").eq("blocker_id", uid),
@@ -363,7 +363,7 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
     const { error: responseError } = await supabase.from("dm_requests").update({ status: accept ? "accepted" : "declined", responded_at: new Date().toISOString() }).eq("id", request.id);
     if (responseError) { setError(responseError.message); return; }
     if (accept) {
-      const { error: messageError } = await supabase.from("direct_messages").insert({ sender_id: request.sender_id, recipient_id: userId, body: request.body });
+      const { error: messageError } = await supabase.from("direct_messages").insert({ sender_id: userId, recipient_id: request.sender_id, body: "Accepted your message request: " + request.body });
       if (messageError) { setError(messageError.message); return; }
     }
     setIncomingRequests(current => current.filter(item => item.id !== request.id));
