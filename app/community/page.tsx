@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Bell, Check, CheckCheck, ChevronDown, FileText,
-  LogOut, MessageCircle, Mic, MoreHorizontal, Paperclip, Pencil,
+  LogOut, MessageCircle, MessageSquare, Mic, MoreHorizontal, Paperclip, Pencil,
   Pin, Plus, RefreshCw, Reply, Search, Send, Shield, StopCircle,
   Trash2, Users, X, Volume2
 } from "lucide-react";
@@ -52,7 +52,7 @@ function renderMessageText(body: string) {
     : <span key={index}>{part}</span>);
 }
 
-export default function CommunityPage() {
+export default function CommunityPage({ initialView = "messages" }: { initialView?: "messages" | "dms" }) {
   const router = useRouter();
   const [userId, setUserId] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -332,11 +332,17 @@ export default function CommunityPage() {
 
   useEffect(() => {
     if (activePeerId) void loadMessages(activePeerId);
-    else if (userId) void loadMessages(null);
+    else if (userId && initialView === "messages") void loadMessages(null);
     forceScrollRef.current = true;
     stickToBottomRef.current = true;
     setReplyTarget(null); setEditTarget(null); setChatText(""); setSearchText("");
-  }, [activePeerId, userId, loadMessages]);
+  }, [activePeerId, userId, loadMessages, initialView]);
+
+  useEffect(() => {
+    if (initialView === "dms" && !activePeerId && filteredMembers.length) {
+      setActivePeerId(filteredMembers[0].id);
+    }
+  }, [initialView, activePeerId, filteredMembers]);
 
   function switchConversation(peerId: string | null) {
     setActivePeerId(peerId);
@@ -563,7 +569,8 @@ export default function CommunityPage() {
     <header className="sx-community-top">
       <Link href="/community" className="sx-community-brand"><span className="sx-mark small"><span>SX</span><b>83</b></span><span>SECTORX83 <small>COMMUNITY NETWORK</small></span></Link>
       <nav className="sx-floating-nav" aria-label="Main navigation">
-        <Link className="is-current" href="/community"><MessageCircle size={15}/> <span>MESSAGES</span></Link>
+        <Link className={initialView === "messages" ? "is-current" : ""} href="/community"><MessageCircle size={15}/> <span>MESSAGES</span></Link>
+        <Link className={initialView === "dms" ? "is-current" : ""} href="/dms"><MessageSquare size={15}/> <span>DMs</span></Link>
         <Link href="/constitution"><FileText size={15}/> <span>CONSTITUTION</span></Link>
       </nav>
       <div className="sx-community-actions">
@@ -575,7 +582,7 @@ export default function CommunityPage() {
 
     <section className="sx-community-shell sx-messenger-shell">
       <div className="sx-messenger-heading">
-        <div><div className="sx-kicker">SX83 / MEMBER NETWORK</div><h1>Messages<span>.</span></h1><p>One community. Direct conversations. No noise.</p></div>
+        <div><div className="sx-kicker">SX83 / MEMBER NETWORK</div><h1>{initialView === "dms" ? "Direct messages" : "Messages"}<span>.</span></h1><p>{initialView === "dms" ? "Private conversations with SX83 members." : "One community. Direct conversations. No noise."}</p></div>
         <div className="sx-messenger-heading-actions">
           <span className="sx-online-indicator"><i/> {onlineIds.length.toString().padStart(2, "0")} ONLINE</span>
           <button className="sx-secondary-button" onClick={enableNotifications}><Bell size={14}/> NOTIFICATIONS</button>
@@ -591,12 +598,12 @@ export default function CommunityPage() {
             <div><div className="sx-kicker">YOUR NETWORK</div><h2>Inbox</h2></div>
             <button className="sx-icon-action" onClick={() => void refreshInbox(userId)} aria-label="Refresh inbox"><RefreshCw size={15}/></button>
           </div>
-          <button className={"sx-inbox-room " + (!activePeerId ? "active" : "")} onClick={() => switchConversation(null)}>
+          {initialView === "messages" && <button className={"sx-inbox-room " + (!activePeerId ? "active" : "")} onClick={() => switchConversation(null)}>
             <span className="sx-room-avatar"><MessageCircle size={18}/></span>
             <span className="sx-inbox-copy"><strong>Community room</strong><small>Public · everyone</small></span>
             <span className="sx-room-live">LIVE</span>
-          </button>
-          <div className="sx-inbox-section"><span>DIRECT MESSAGES</span><button onClick={() => setShowMembers(value => !value)} aria-label="Toggle members"><Plus size={14}/></button></div>
+          </button>}
+          <div className="sx-inbox-section"><span>{initialView === "dms" ? "YOUR CONVERSATIONS" : "DIRECT MESSAGES"}</span><button onClick={() => setShowMembers(value => !value)} aria-label="Toggle members"><Plus size={14}/></button></div>
           <label className="sx-search-field"><Search size={14}/><input value={memberSearch} onChange={event => setMemberSearch(event.target.value)} placeholder="Find a member…"/></label>
           <div className="sx-inbox-list">
             {filteredMembers.map(person => <button key={person.id} className={"sx-inbox-person " + (activePeerId === person.id ? "active" : "")} onClick={() => switchConversation(person.id)}>
@@ -610,13 +617,13 @@ export default function CommunityPage() {
         </aside>
 
         <div className="sx-mobile-contacts">
-          <button className={!activePeerId ? "active" : ""} onClick={() => switchConversation(null)}><MessageCircle size={15}/> Community</button>
+          {initialView === "messages" && <button className={!activePeerId ? "active" : ""} onClick={() => switchConversation(null)}><MessageCircle size={15}/> Community</button>}
           {filteredMembers.map(person => <button key={person.id} className={activePeerId === person.id ? "active" : ""} onClick={() => switchConversation(person.id)}><span className="sx-mobile-contact-avatar">{person.avatar_url ? <img src={person.avatar_url} alt=""/> : initials(person.display_name)}</span>{person.display_name}{unread[person.id] > 0 && <i>{unread[person.id]}</i>}</button>)}
         </div>
-        <section className="sx-chat-panel sx-messenger-main glass-panel">
+        {initialView === "dms" && !activePeerId ? <section className="sx-chat-panel sx-messenger-main glass-panel"><div className="sx-chat-empty">{filteredMembers.length ? "Choose a member to start a private conversation." : "No other members are available yet."}</div></section> : <section className="sx-chat-panel sx-messenger-main glass-panel">
           <div className="sx-chat-topline">
             <div className="sx-chat-title">
-              {activePeerId && <button className="sx-mobile-back" onClick={() => switchConversation(null)} aria-label="Back to community"><ArrowLeft size={17}/></button>}
+              {activePeerId && initialView === "messages" && <button className="sx-mobile-back" onClick={() => switchConversation(null)} aria-label="Back to community"><ArrowLeft size={17}/></button>}
               <span className="sx-chat-title-avatar">{activePeer ? (activePeer.avatar_url ? <img src={activePeer.avatar_url} alt=""/> : initials(activePeer.display_name)) : <MessageCircle size={17}/>}</span>
               <div><div className="sx-kicker">{activePeer ? "PRIVATE CONVERSATION" : "PUBLIC CHANNEL"}</div><h2>{activePeer?.display_name || "Community room"}</h2><small>{activePeer ? (onlineIds.includes(activePeer.id) ? "Online now" : "Direct messages are private") : "Visible to all SX83 members"}</small></div>
             </div>
@@ -701,7 +708,7 @@ export default function CommunityPage() {
             </form>
             <div className="sx-composer-foot"><span>{activePeer ? "PRIVATE · END-TO-END TRANSPORT VIA SUPABASE AUTH" : "COMMUNITY ROOM · VISIBLE TO ALL MEMBERS"}</span><span>ENTER TO SEND · SHIFT + ENTER FOR NEW LINE</span></div>
           </div>
-        </section>
+        </section>}
 
         <aside className={"sx-member-rail glass-panel " + (showMembers ? "" : "collapsed")}>
           <div className="sx-inbox-head"><div><div className="sx-kicker">COMMUNITY</div><h2>Members</h2></div><button className="sx-icon-action" onClick={() => setShowMembers(value => !value)}><X size={15}/></button></div>
