@@ -417,10 +417,11 @@ export default function CommunityPage() {
   }
 
   async function reportMessage(message: ChatMessage) {
-    if (!activePeerId) { setError("Reporting community-room messages is not configured yet."); return; }
     const reason = window.prompt("Why are you reporting this message? (At least 5 characters)");
     if (!reason || reason.trim().length < 5) return;
-    const { error: reportError } = await getSupabase().from("message_reports").insert({ reporter_id: userId, message_id: message.id, reason: reason.trim() });
+    const reportError = activePeerId
+      ? (await getSupabase().from("message_reports").insert({ reporter_id: userId, message_id: message.id, reason: reason.trim() })).error
+      : (await getSupabase().from("community_message_reports").insert({ reporter_id: userId, message_id: message.id, reason: reason.trim() })).error;
     if (reportError) setError(reportError.message); else setNotice("Report submitted to moderators.");
   }
 
@@ -545,7 +546,7 @@ export default function CommunityPage() {
                       <button title="Save message" onClick={() => void togglePin(message)} className={pinnedIds.includes(message.id) ? "is-pinned" : ""}><Pin size={13}/></button>
                       {own && <button title="Edit message" onClick={() => { setEditTarget(message); setReplyTarget(null); setChatText(message.body); inputRef.current?.focus(); }}><Pencil size={13}/></button>}
                       {own && <button title="Delete message" onClick={() => void deleteMessage(message)}><Trash2 size={13}/></button>}
-                      {!own && activePeerId && <button title="Report message" onClick={() => void reportMessage(message)}><Shield size={13}/></button>}
+                      {!own && <button title="Report message" onClick={() => void reportMessage(message)}><Shield size={13}/></button>}
                     </div>
                   </div>
                 </div>
