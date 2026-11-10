@@ -1693,3 +1693,52 @@ body {
 .sx-message-body a:hover{color:#fff;text-decoration-color:#fff}
 .sx-member-card-actions{flex-wrap:wrap}
 
+/* Full-viewport messenger layout */
+.sx-community-page.chat-active{min-height:100dvh!important;height:100dvh;overflow:hidden}
+.sx-messenger-shell.sx-community-shell{
+  width:100%!important;max-width:none!important;margin:0!important;
+  min-height:100dvh;height:100dvh;padding:100px 16px 8px!important;
+  display:flex;flex-direction:column;
+}
+.sx-messenger-heading{flex:none;margin:0 0 12px;align-items:center}
+.sx-messenger-heading h1{font-size:clamp(25px,3vw,34px);margin:3px 0}
+.sx-messenger-heading p{font-size:10px}
+.sx-messenger-layout{
+  flex:1;min-height:0;height:auto;max-height:none;
+  grid-template-columns:260px minmax(0,1fr) 230px;
+}
+.sx-messenger-main{height:100%;min-height:0}
+.sx-inbox,.sx-member-rail{height:100%;min-height:0}
+.sx-chat-log{min-height:0}
+.sx-community-footer{display:none}
+@media(max-width:1180px){
+  .sx-messenger-layout{grid-template-columns:230px minmax(0,1fr)}
+}
+@media(max-width:760px){
+  .sx-messenger-shell.sx-community-shell{
+    height:100dvh;min-height:100dvh;padding:82px 8px 8px!important;
+  }
+  .sx-messenger-heading{margin:0 4px 8px;flex-direction:row;align-items:center}
+  .sx-messenger-heading h1{font-size:25px;letter-spacing:-1px}
+  .sx-messenger-heading p{display:none}
+  .sx-messenger-heading-actions{width:auto;gap:8px}
+  .sx-messenger-layout,.sx-messenger-layout.members-hidden{
+    display:flex;flex-direction:column;flex:1;min-height:0;height:auto;gap:0;
+  }
+  .sx-mobile-contacts{flex:none}
+  .sx-messenger-main{flex:1;min-height:0;height:auto;border-radius:14px}
+  .sx-chat-log{flex:1;min-height:0;padding:12px 10px}
+  .sx-composer-wrap{flex:none}
+  .sx-inbox{display:none}
+}
+@media(max-width:480px){
+  .sx-messenger-shell.sx-community-shell{padding:78px 6px 6px!important}
+  .sx-messenger-heading{margin-bottom:5px}
+  .sx-messenger-heading h1{font-size:22px}
+  .sx-messenger-heading-actions .sx-secondary-button{min-height:29px}
+  .sx-chat-topline{gap:6px;padding:9px}
+  .sx-chat-title-avatar{width:34px;height:34px}
+  .sx-chat-title h2{font-size:13px}
+  .sx-chat-search{width:min(120px,30vw)}
+}
+
