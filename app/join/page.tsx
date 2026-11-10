@@ -30,7 +30,7 @@ export default function JoinPage() {
         });
         if (authError) throw authError;
         if (data.session) router.push("/community");
-        else setMessage("Your account has been created. Check your email to confirm it, then sign in.");
+        else setMessage("Account created. Confirm your email, then sign in. Your member profile is created automatically in the community database.");
       } else {
         const { error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (authError) throw authError;
@@ -45,27 +45,27 @@ export default function JoinPage() {
     <div className="sx-auth-grid" aria-hidden="true" />
     <section className="sx-auth-card">
       <div className="sx-mark"><span>SX</span><b>83</b></div>
-      <div className="sx-kicker">SECTORX83 / NETWORK ACCESS</div>
+      <div className="sx-kicker">SECTORX83 / MEMBER ACCESS</div>
       <h1>{mode === "join" ? "Join the network." : "Welcome back."}</h1>
-      <p className="sx-auth-intro">A public, independent community for research, discussion and shared learning. Membership is voluntary and open to everyone who agrees to the community standards.</p>
+      <p className="sx-auth-intro">Create a member account or sign in to enter the SX83 community chat. Your account and member profile are stored in the community database.</p>
       <div className="sx-auth-tabs">
         <button className={mode === "join" ? "selected" : ""} onClick={() => { setMode("join"); setError(""); setMessage(""); }}>CREATE ACCOUNT</button>
         <button className={mode === "login" ? "selected" : ""} onClick={() => { setMode("login"); setError(""); setMessage(""); }}>SIGN IN</button>
       </div>
       <form className="sx-auth-form" onSubmit={submit}>
         {mode === "join" && <>
-          <label>DISPLAY NAME<input value={displayName} onChange={e => setDisplayName(e.target.value)} required minLength={1} maxLength={48} placeholder="How members will see you" /></label>
-          <label>USERNAME<input value={username} onChange={e => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 24))} required minLength={3} maxLength={24} placeholder="letters, numbers and underscore" /></label>
+          <label>DISPLAY NAME<input value={displayName} onChange={event => setDisplayName(event.target.value)} required minLength={1} maxLength={48} placeholder="How members will see you" /></label>
+          <label>USERNAME<input value={username} onChange={event => setUsername(event.target.value.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 24))} required minLength={3} maxLength={24} placeholder="letters, numbers and underscore" /></label>
         </>}
-        <label>EMAIL ADDRESS<input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="you@example.com" /></label>
-        <label>PASSWORD<input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} autoComplete={mode === "join" ? "new-password" : "current-password"} placeholder="At least 8 characters" /></label>
+        <label>EMAIL ADDRESS<input type="email" value={email} onChange={event => setEmail(event.target.value)} required autoComplete="email" placeholder="you@example.com" /></label>
+        <label>PASSWORD<input type="password" value={password} onChange={event => setPassword(event.target.value)} required minLength={8} autoComplete={mode === "join" ? "new-password" : "current-password"} placeholder="At least 8 characters" /></label>
         <button className="sx-gold-button" disabled={busy}>{busy ? "PLEASE WAIT…" : mode === "join" ? "CREATE MEMBERSHIP" : "SIGN IN"} <ArrowUpRight size={15}/></button>
       </form>
       {error && <div className="sx-alert error">{error}</div>}
       {message && <div className="sx-alert success">{message}</div>}
-      <div className="sx-auth-foot"><ShieldCheck size={15}/> Accounts use Supabase authentication. Passwords are never stored by SectorX83.</div>
+      <div className="sx-auth-foot"><ShieldCheck size={15}/> Supabase verifies your credentials. Chat access requires a matching database member profile.</div>
       <p className="sx-auth-terms">By joining, you agree to the <Link href="/constitution">community constitution</Link>. No forced loyalty, no harassment, and no authority over non-members.</p>
-      <Link className="sx-back-link" href="/">← RETURN TO COMMUNITY</Link>
+      <Link className="sx-back-link" href="/">← RETURN TO COMMUNITY CHAT</Link>
     </section>
   </main>;
 }
