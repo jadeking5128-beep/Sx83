@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, RefreshCw, Send, Users } from "lucide-react";
+import { LogOut, MessageCircle, RefreshCw, ScrollText, Send, Users } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
 type Profile = { id: string; username: string; display_name: string };
@@ -95,7 +95,11 @@ export default function CommunityPage() {
 
   return <main className="sx-community-page chat-active">
     <header className="sx-community-top">
-      <Link href="/" className="sx-community-brand"><span className="sx-mark small"><span>SX</span><b>83</b></span><span>SECTORX83 <small>COMMUNITY NETWORK</small></span></Link>
+      <Link href="/community" className="sx-community-brand"><span className="sx-mark small"><span>SX</span><b>83</b></span><span>SECTORX83 <small>COMMUNITY NETWORK</small></span></Link>
+      <nav className="sx-floating-nav" aria-label="Main navigation">
+        <Link className="is-current" href="/community"><MessageCircle size={15}/> <span>CHAT</span></Link>
+        <Link href="/constitution"><ScrollText size={15}/> <span>CONSTITUTION</span></Link>
+      </nav>
       <div className="sx-community-actions"><span>{profile?.display_name || "MEMBER"}</span><button onClick={signOut}><LogOut size={14}/> SIGN OUT</button></div>
     </header>
     <section className="sx-community-shell chat-mode">
