@@ -65,7 +65,7 @@ export default function JoinPage() {
       {message && <div className="sx-alert success">{message}</div>}
       <div className="sx-auth-foot"><ShieldCheck size={15}/> Accounts use Supabase authentication. Passwords are never stored by SectorX83.</div>
       <p className="sx-auth-terms">By joining, you agree to the <Link href="/constitution">community constitution</Link>. No forced loyalty, no harassment, and no authority over non-members.</p>
-      <Link className="sx-back-link" href="/">← RETURN TO RESEARCH DASHBOARD</Link>
+      <Link className="sx-back-link" href="/">← RETURN TO COMMUNITY</Link>
     </section>
   </main>;
 }
