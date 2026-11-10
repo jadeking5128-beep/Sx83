@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowDown, ArrowUp, Check, ChevronDown, Menu, MessageSquare,
-  MoreHorizontal, Plus, Search, Settings2, Sparkles, SquarePen, X,
+  ArrowUp, Check, Menu, MessageSquare, MoreHorizontal, Search, Sparkles, SquarePen, X,
 } from "lucide-react";
 
 type Message = { id: string; role: "user" | "assistant"; content: string; createdAt: number };
