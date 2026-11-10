@@ -193,9 +193,12 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
     if (members.error) setError(members.error.message); else setProfiles(members.data || []);
     setBlockedIds((blocks.data || []).map((row: { blocked_id: string }) => row.blocked_id));
     setMutedIds((muted.data || []).map((row: { peer_id: string }) => row.peer_id));
-    await Promise.all([loadMessages(null, uid), refreshInbox(uid)]);
+    await Promise.all([
+      initialView === "messages" ? loadMessages(null, uid) : Promise.resolve(),
+      refreshInbox(uid)
+    ]);
     setLoading(false);
-  }, [router, loadMessages, refreshInbox]);
+  }, [router, loadMessages, refreshInbox, initialView]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -339,10 +342,10 @@ export default function CommunityPage({ initialView = "messages" }: { initialVie
   }, [activePeerId, userId, loadMessages, initialView]);
 
   useEffect(() => {
-    if (initialView === "dms" && !activePeerId && filteredMembers.length) {
+    if (initialView === "dms" && !loading && !activePeerId && filteredMembers.length) {
       setActivePeerId(filteredMembers[0].id);
     }
-  }, [initialView, activePeerId, filteredMembers]);
+  }, [initialView, loading, activePeerId, filteredMembers]);
 
   function switchConversation(peerId: string | null) {
     setActivePeerId(peerId);
