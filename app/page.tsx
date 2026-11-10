@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity, ArrowDownRight, ArrowUpRight, Atom, Bell, BookOpen, Building2,
+  Activity, ArrowUpRight, Atom, Bell, Building2,
   CalendarClock, ChevronDown, ChevronRight, CircleDot, Clock3, Database,
   FileText, Globe2, Landmark, Menu, Newspaper, RadioTower,
   RefreshCw, Search, ShieldCheck, Sparkles, TrendingUp, X,
