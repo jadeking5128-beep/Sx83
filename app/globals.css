@@ -1546,7 +1546,7 @@ body {
 .sx-message-meta em{font:7px var(--mono);letter-spacing:.7px;color:#9aa8a0}
 .sx-read-state{display:inline-flex;color:#9fb9a9}
 .sx-message-body{margin:5px 0 0;color:#cbd3cf;font-size:12px;line-height:1.65;overflow-wrap:anywhere;white-space:pre-wrap}
-.sx-own-message .sx-message-body{color:#e2e9e5}
+.sx-rich-message.own-message .sx-message-body{color:#e2e9e5}
 .sx-reply-preview{display:flex;align-items:center;gap:6px;max-width:100%;margin:7px 0 2px;padding:5px 8px;border:0;border-left:2px solid #82948a;border-radius:0 6px 6px 0;background:rgba(255,255,255,.045);color:#9eaaa5;font-size:9px;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .sx-attachment{margin-top:9px;max-width:min(420px,100%)}
 .sx-attachment>a>img{display:block;max-width:100%;max-height:300px;border:1px solid var(--msg-border);border-radius:12px;object-fit:contain;background:#080a0a}
