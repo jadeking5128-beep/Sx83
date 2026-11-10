@@ -35,7 +35,7 @@ body { background:#080808; }
 .error-message { background:#19150e; border-color:#6a5836; color:#e0d0a7; }
 .answer-block { border-color:#49402d; background:#0c0c0b; }
 .camera-frame,.imagery-panel iframe { background:#080808; border-color:#333; }
-.world-map-wrap { filter:grayscale(1) contrast(1.08); }
+.world-map-wrap .leaflet-tile { filter:grayscale(1) contrast(1.08); }
 .phase-two-dock { position:fixed; z-index:120; left:50%; bottom:14px; transform:translateX(-50%); display:flex; align-items:center; gap:4px; padding:6px; border:1px solid #5c4c30; border-radius:4px; background:rgba(9,9,9,.96); box-shadow:0 10px 35px #000b; backdrop-filter:blur(14px); max-width:calc(100vw - 24px); }
 .phase-two-dock a { display:flex; align-items:center; gap:7px; padding:10px 13px; color:#b9bbbc; text-decoration:none; font:8px var(--mono); letter-spacing:.9px; white-space:nowrap; border:1px solid transparent; border-radius:2px; }
 .phase-two-dock a svg { color:#bda16a; }
