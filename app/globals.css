@@ -1684,4 +1684,12 @@ body {
 .sx-global-search-result time{flex:none;color:#718079;font:7px var(--mono)}
 .sx-global-search-empty{padding:10px;color:#89958f;font-size:9px}
 @media(max-width:760px){.sx-global-search-results{right:-4px;top:39px}}
+.sx-messenger[data-chat-theme="silver"] .sx-messenger-main{background:linear-gradient(145deg,rgba(35,42,43,.94),rgba(19,24,25,.97));border-color:rgba(226,236,230,.2)}
+.sx-messenger[data-chat-theme="silver"] .sx-rich-composer{background:rgba(210,220,214,.055);border-color:rgba(225,235,229,.22)}
+.sx-messenger[data-chat-theme="deep"] .sx-messenger-main{background:linear-gradient(145deg,rgba(9,12,13,.98),rgba(5,7,8,.99));border-color:rgba(190,205,197,.09)}
+.sx-messenger[data-chat-theme="deep"] .sx-rich-composer{background:rgba(0,0,0,.42);border-color:rgba(190,205,197,.12)}
+.sx-messenger .sx-icon-action.is-active{color:#e4eee7;background:rgba(170,205,184,.12);border-color:rgba(170,205,184,.25)}
+.sx-message-body a{color:#d2e0d6;text-decoration:underline;text-decoration-color:rgba(210,224,214,.35);text-underline-offset:3px;overflow-wrap:anywhere}
+.sx-message-body a:hover{color:#fff;text-decoration-color:#fff}
+.sx-member-card-actions{flex-wrap:wrap}
 
