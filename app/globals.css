@@ -139,3 +139,14 @@ body { background:#080808; }
 .sx-constitution-note { margin-top:22px;padding:15px;border:1px solid #5b4b30;background:#15120d;color:#b6a77f;font-size:10px;line-height:1.7; }
 @media(max-width:720px) { .sx-auth-card { margin:20px auto;padding:24px 19px; } .sx-community-top { padding:0 14px;height:60px; } .sx-community-actions { gap:11px; } .sx-community-actions a,.sx-community-actions button { font-size:7px; } .sx-community-shell,.sx-constitution-shell { padding:28px 0 24px; } .sx-community-heading { align-items:flex-start; } .sx-member-count { padding-left:10px; } .sx-community-grid { grid-template-columns:1fr; } .sx-member-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .sx-constitution-hero { align-items:flex-start; } .sx-constitution-seal { width:110px;height:110px;font-size:6px; } .sx-constitution-seal svg { width:24px; } .sx-constitution-seal strong { font-size:7px; } .sx-chat-form { align-items:stretch; } .sx-chat-form .sx-gold-button { padding:10px; } }
 @media(max-width:430px) { .sx-member-grid { grid-template-columns:1fr; } .sx-constitution-seal { display:none; } .sx-community-heading { flex-direction:column; } .sx-member-count { border-left:0;padding-left:0; } .sx-community-footer { flex-direction:column; } }
+
+/* Final palette lock: remove residual green, red and blue status accents. */
+.status-pulse { background:#c7a66a!important; box-shadow:0 0 0 3px #c7a66a1c!important; }
+.user-state,.topbar-status,.source-status,.camera-status,.status-pill,.phase-note { color:#d6bd86!important; border-color:#75613d!important; }
+.status-pill,.source-status,.camera-status { background:#17140e!important; }
+.system-card,.analyst-side-foot,.hero-meta,.observatory-meta { color:#c4c7c8; }
+.system-card i,.hero-meta svg,.observatory-meta svg { color:#c7a66a; }
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible { outline:1px solid #c7a66a; outline-offset:2px; }
+.sx-constitution-symbol svg { animation:sx-scale-sway 5s ease-in-out infinite; transform-origin:50% 50%; }
+@keyframes sx-scale-sway { 0%,100% { transform:rotate(-2deg); } 50% { transform:rotate(2deg); } }
+@media(prefers-reduced-motion:reduce) { .sx-constitution-symbol svg { animation:none; } }
