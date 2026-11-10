@@ -25,6 +25,8 @@ type ChatMessage = {
   attachment_url?: string | null;
 };
 type Reaction = { id: string; message_id: string; user_id: string; emoji: string };
+type InboxMessage = { id: string; sender_id: string; recipient_id: string; read_at: string | null; created_at: string; body: string };
+type ChangeRow = { id?: string; sender_id?: string; recipient_id?: string; body?: string; message_id?: string; user_id?: string; emoji?: string };
 type TypingUser = { user_id: string; user_name: string; context: string };
 
 const MEDIA_BUCKET = "sx83-chat-media";
@@ -108,10 +110,8 @@ export default function CommunityPage() {
       .or("sender_id.eq." + uid + ",recipient_id.eq." + uid)
       .order("created_at", { ascending: false }).limit(500);
     const counts: Record<string, number> = {};
-    const latest = new Map<string, ChatMessage>();
-    (data || []).forEach((row: any) => {
+    ((data || []) as InboxMessage[]).forEach(row => {
       const peer = row.sender_id === uid ? row.recipient_id : row.sender_id;
-      if (!latest.has(peer)) latest.set(peer, row);
       if (row.recipient_id === uid && !row.read_at) counts[peer] = (counts[peer] || 0) + 1;
     });
     setUnread(counts);
@@ -137,7 +137,7 @@ export default function CommunityPage() {
     } else setReactions([]);
     const { data: pins } = await supabase.from("pinned_messages").select("message_id")
       .eq("user_id", uid).eq("message_type", peerId ? "direct" : "community");
-    setPinnedIds((pins || []).map((pin: any) => pin.message_id));
+    setPinnedIds((pins || []).map((pin: { message_id: string }) => pin.message_id));
     if (peerId) {
       await supabase.from("direct_messages").update({ read_at: new Date().toISOString() })
         .eq("sender_id", peerId).eq("recipient_id", uid).is("read_at", null);
@@ -168,7 +168,7 @@ export default function CommunityPage() {
       });
     } else setError("Your member profile is missing. Contact a community administrator.");
     if (members.error) setError(members.error.message); else setProfiles(members.data || []);
-    setBlockedIds((blocks.data || []).map((row: any) => row.blocked_id));
+    setBlockedIds((blocks.data || []).map((row: { blocked_id: string }) => row.blocked_id));
     await Promise.all([loadMessages(null, uid), refreshInbox(uid)]);
     setLoading(false);
   }, [router, loadMessages, refreshInbox]);
@@ -183,7 +183,7 @@ export default function CommunityPage() {
         if (!activePeerId) void loadMessages(null);
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "direct_messages" }, payload => {
-        const row = (payload.new || payload.old) as any;
+        const row = (payload.new || payload.old) as ChangeRow;
         if (row && (row.sender_id === userId || row.recipient_id === userId)) {
           if (activePeerId && (row.sender_id === activePeerId || row.recipient_id === activePeerId)) void loadMessages(activePeerId);
           if (payload.eventType === "INSERT" && row.sender_id !== userId && row.recipient_id === userId && document.hidden && "Notification" in window && Notification.permission === "granted") {
@@ -194,11 +194,11 @@ export default function CommunityPage() {
         }
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "message_reactions" }, payload => {
-        const row = (payload.new || payload.old) as any;
+        const row = (payload.new || payload.old) as Reaction;
         if (row?.message_id) {
           setReactions(current => {
             const filtered = current.filter(item => item.id !== row.id);
-            return payload.eventType === "DELETE" ? filtered : [...filtered, row as Reaction];
+            return payload.eventType === "DELETE" ? filtered : [...filtered, row];
           });
         }
       })
@@ -271,11 +271,11 @@ export default function CommunityPage() {
     if ((!body && !replyTarget) || !userId || !profile || busy) return;
     if (activePeerId && blockedIds.includes(activePeerId)) { setError("Unblock this member before sending a direct message."); return; }
     setBusy(true); setError("");
-    const table = activePeerId ? "direct_messages" : "community_messages";
-    const payload: Record<string, any> = activePeerId
-      ? { sender_id: userId, recipient_id: activePeerId, body: body || "Attachment", reply_to_id: replyTarget?.id || null }
-      : { author_id: userId, body: body || "Attachment", reply_to_id: replyTarget?.id || null };
-    const { error: insertError } = await getSupabase().from(table).insert(payload);
+    const supabase = getSupabase();
+    const result = activePeerId
+      ? await supabase.from("direct_messages").insert({ sender_id: userId, recipient_id: activePeerId, body: body || "Attachment", reply_to_id: replyTarget?.id || null })
+      : await supabase.from("community_messages").insert({ author_id: userId, body: body || "Attachment", reply_to_id: replyTarget?.id || null });
+    const insertError = result.error;
     if (insertError) setError(insertError.message);
     else { setChatText(""); setReplyTarget(null); }
     setBusy(false);
@@ -289,15 +289,16 @@ export default function CommunityPage() {
     const path = userId + "/" + crypto.randomUUID() + "-" + safeName;
     const { error: uploadError } = await getSupabase().storage.from(MEDIA_BUCKET).upload(path, file, { upsert: false, contentType: file.type || "application/octet-stream" });
     if (uploadError) { setError(uploadError.message); setBusy(false); return; }
-    const table = activePeerId ? "direct_messages" : "community_messages";
-    const payload: Record<string, any> = {
+    const attachment = {
       body: chatText.trim() || file.name, attachment_path: path, attachment_name: file.name,
       attachment_mime: file.type || "application/octet-stream", attachment_size: file.size,
       reply_to_id: replyTarget?.id || null
     };
-    if (activePeerId) { payload.sender_id = userId; payload.recipient_id = activePeerId; }
-    else payload.author_id = userId;
-    const { error: insertError } = await getSupabase().from(table).insert(payload);
+    const supabase = getSupabase();
+    const result = activePeerId
+      ? await supabase.from("direct_messages").insert({ ...attachment, sender_id: userId, recipient_id: activePeerId })
+      : await supabase.from("community_messages").insert({ ...attachment, author_id: userId });
+    const insertError = result.error;
     if (insertError) {
       setError(insertError.message);
       await getSupabase().storage.from(MEDIA_BUCKET).remove([path]);
@@ -491,6 +492,7 @@ export default function CommunityPage() {
               <div><div className="sx-kicker">{activePeer ? "PRIVATE CONVERSATION" : "PUBLIC CHANNEL"}</div><h2>{activePeer?.display_name || "Community room"}</h2><small>{activePeer ? (onlineIds.includes(activePeer.id) ? "Online now" : "Direct messages are private") : "Visible to all SX83 members"}</small></div>
             </div>
             <div className="sx-chat-top-actions">
+              <button className="sx-icon-action sx-member-toggle" onClick={() => setShowMembers(value => !value)} aria-label="Toggle member list"><Users size={16}/></button>
               <label className="sx-chat-search"><Search size={14}/><input value={searchText} onChange={event => setSearchText(event.target.value)} placeholder="Search messages…"/></label>
               {activePeer && <button className="sx-icon-action" onClick={() => setProfileTarget(activePeer)} aria-label="Member details"><MoreHorizontal size={18}/></button>}
             </div>
