@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, BookOpen, LogOut, MessageCircle, RefreshCw, Send, Users, UserCircle2 } from "lucide-react";
@@ -26,6 +26,7 @@ export default function CommunityPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const chatLogRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     const supabase = getSupabase();
@@ -64,6 +65,8 @@ export default function CommunityPage() {
 
   const authorMap = useMemo(() => new Map(profiles.map(person => [person.id, person])), [profiles]);
 
+  useEffect(() => { const log = chatLogRef.current; if (log) log.scrollTo({ top: log.scrollHeight, behavior: "smooth" }); }, [messages]);
+
   async function createPost(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(""); setNotice("");
     const { error: insertError } = await getSupabase().from("posts").insert({ author_id: userId, title: title.trim(), body: body.trim(), category: "DISCUSSION" });
@@ -99,7 +102,7 @@ export default function CommunityPage() {
       {notice && <div className="sx-alert success">{notice}</div>}{error && <div className="sx-alert error">{error}</div>}
       {loading ? <div className="sx-empty">CONNECTING TO THE NETWORK…</div> : <>
         {tab === "discussions" && <div className="sx-community-grid"><section className="sx-feed-column"><div className="sx-section-title"><div><div className="sx-kicker">PUBLIC EXCHANGE</div><h2>Recent discussions</h2></div><button className="sx-icon-action" onClick={()=>void load()}><RefreshCw size={15}/></button></div>{posts.length ? posts.map(post => { const author=authorMap.get(post.author_id); return <article className="sx-post-card" key={post.id}><div className="sx-post-meta"><span>{post.is_announcement?"COMMUNITY NOTICE":post.category}</span><time>{new Date(post.created_at).toLocaleString()}</time></div><h3>{post.title}</h3><p>{post.body}</p><div className="sx-post-author">BY {author?.display_name || "Community member"} <span>@{author?.username || "member"}</span></div></article>; }) : <div className="sx-empty">No discussions yet. Start the first one.</div>}</section><aside className="sx-compose-card"><div className="sx-kicker">CONTRIBUTE</div><h2>Start a discussion.</h2><form onSubmit={createPost}><label>SUBJECT<input value={title} onChange={e=>setTitle(e.target.value)} required maxLength={120} placeholder="A clear discussion title"/></label><label>YOUR POST<textarea value={body} onChange={e=>setBody(e.target.value)} required maxLength={10000} rows={6} placeholder="Share an idea, question or useful research…"/></label><button className="sx-gold-button" disabled={busy}>PUBLISH DISCUSSION <ArrowUpRight size={15}/></button></form><p className="sx-compose-note">Keep discussions respectful, evidence-led and open to disagreement.</p></aside></div>}
-        {tab === "chat" && <section className="sx-chat-panel sx-chat-fullscreen"><div className="sx-section-title"><div><div className="sx-kicker">SHARED ROOM</div><h2>Community chat</h2></div><span className="sx-live-label">LIVE MEMBER ROOM</span></div><div className="sx-chat-log">{messages.map(message=>{const author=authorMap.get(message.author_id);return <article className="sx-chat-message" key={message.id}><div><strong>{author?.display_name || "Member"}</strong><small>@{author?.username || "member"} · {new Date(message.created_at).toLocaleTimeString()}</small></div><p>{message.body}</p></article>;})}{!messages.length&&<div className="sx-empty">No messages yet. Start the conversation.</div>}</div><form className="sx-chat-form" onSubmit={sendMessage}><input value={chatText} onChange={e=>setChatText(e.target.value)} maxLength={2000} placeholder="Write a message…" aria-label="Chat message"/><button className="sx-gold-button" disabled={busy||!chatText.trim()}><Send size={15}/> SEND</button></form></section>}
+        {tab === "chat" && <section className="sx-chat-panel sx-chat-fullscreen"><div className="sx-section-title"><div><div className="sx-kicker">SHARED ROOM</div><h2>Community chat</h2></div><span className="sx-live-label">LIVE MEMBER ROOM</span></div><div className="sx-chat-log" ref={chatLogRef} aria-live="polite">{messages.map(message=>{const author=authorMap.get(message.author_id);return <article className="sx-chat-message" key={message.id}><div><strong>{author?.display_name || "Member"}</strong><small>@{author?.username || "member"} · {new Date(message.created_at).toLocaleTimeString()}</small></div><p>{message.body}</p></article>;})}{!messages.length&&<div className="sx-empty">No messages yet. Start the conversation.</div>}</div><form className="sx-chat-form" onSubmit={sendMessage}><input value={chatText} onChange={e=>setChatText(e.target.value)} maxLength={2000} placeholder="Write a message…" aria-label="Chat message"/><button className="sx-gold-button" disabled={busy||!chatText.trim()}><Send size={15}/> SEND</button></form></section>}
         {tab === "members" && <section><div className="sx-section-title"><div><div className="sx-kicker">DIRECTORY</div><h2>Member directory</h2></div><span className="sx-muted">Profiles are visible to signed-in members.</span></div><div className="sx-member-grid">{profiles.map(person=><article className="sx-member-card" key={person.id}><div className="sx-member-avatar">{(person.display_name||"S").slice(0,1).toUpperCase()}</div><h3>{person.display_name}</h3><span>@{person.username}</span><p>{person.bio||"No profile description added yet."}</p>{person.location&&<small>{person.location}</small>}</article>)}</div></section>}
         {tab === "profile" && <section className="sx-profile-panel"><div className="sx-kicker">YOUR MEMBER RECORD</div><h2>Profile details</h2><div className="sx-profile-identity"><div className="sx-member-avatar">{(profile?.display_name||"S").slice(0,1).toUpperCase()}</div><div><strong>{profile?.display_name}</strong><span>@{profile?.username}</span></div></div><form onSubmit={saveProfile}><label>ABOUT YOU<textarea value={bio} onChange={e=>setBio(e.target.value)} maxLength={240} rows={4} placeholder="A short introduction…"/></label><button className="sx-gold-button" disabled={busy}>SAVE PROFILE <ArrowUpRight size={15}/></button></form></section>}
       </>}
