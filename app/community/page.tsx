@@ -25,6 +25,7 @@ type ChatMessage = {
   attachment_url?: string | null;
 };
 type Reaction = { id: string; message_id: string; user_id: string; emoji: string };
+type GlobalSearchResult = ChatMessage & { conversationType: "community" | "direct"; peerId?: string };
 type InboxMessage = { id: string; sender_id: string; recipient_id: string; read_at: string | null; created_at: string; body: string };
 type ChangeRow = { id?: string; sender_id?: string; recipient_id?: string; body?: string; message_id?: string; user_id?: string; emoji?: string };
 type TypingUser = { user_id: string; user_name: string; context: string };
@@ -62,6 +63,10 @@ export default function CommunityPage() {
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [chatText, setChatText] = useState("");
   const [searchText, setSearchText] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [globalResults, setGlobalResults] = useState<GlobalSearchResult[]>([]);
+  const [globalSearching, setGlobalSearching] = useState(false);
+  const [pendingJumpId, setPendingJumpId] = useState<string | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -86,10 +91,7 @@ export default function CommunityPage() {
 
   const activePeer = useMemo(() => profiles.find(person => person.id === activePeerId) || null, [profiles, activePeerId]);
   const context = activePeerId && userId ? pairContext(userId, activePeerId) : "community";
-  const visibleMessages = useMemo(() => {
-    const query = searchText.trim().toLowerCase();
-    return query ? messages.filter(message => message.body.toLowerCase().includes(query) || (message.attachment_name || "").toLowerCase().includes(query)) : messages;
-  }, [messages, searchText]);
+  const visibleMessages = messages;
   const filteredMembers = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
     return profiles.filter(person => person.id !== userId && (!query || person.display_name.toLowerCase().includes(query) || person.username.toLowerCase().includes(query)))
@@ -179,6 +181,34 @@ export default function CommunityPage() {
   }, [router, loadMessages, refreshInbox]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    const term = searchText.trim();
+    if (term.length < 2 || !userId) { setGlobalResults([]); setGlobalSearching(false); return; }
+    let active = true;
+    setGlobalSearching(true);
+    const supabase = getSupabase();
+    void Promise.all([
+      supabase.from("community_messages").select("*").ilike("body", "%" + term + "%").order("created_at", { ascending: false }).limit(12),
+      supabase.from("direct_messages").select("*").or("sender_id.eq." + userId + ",recipient_id.eq." + userId).ilike("body", "%" + term + "%").order("created_at", { ascending: false }).limit(12)
+    ]).then(([community, direct]) => {
+      if (!active) return;
+      const publicRows = (community.data || []).map(row => ({ ...row, conversationType: "community" as const }));
+      const privateRows = (direct.data || []).map(row => ({
+        ...row, conversationType: "direct" as const,
+        peerId: row.sender_id === userId ? row.recipient_id : row.sender_id
+      }));
+      setGlobalResults([...publicRows, ...privateRows].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 18));
+      setGlobalSearching(false);
+    }).catch(() => { if (active) { setGlobalResults([]); setGlobalSearching(false); } });
+    return () => { active = false; };
+  }, [searchText, userId]);
+
+  useEffect(() => {
+    if (!pendingJumpId) return;
+    const target = chatLogRef.current?.querySelector('[data-message-id="' + pendingJumpId + '"]');
+    if (target) { target.scrollIntoView({ behavior: "smooth", block: "center" }); setPendingJumpId(null); }
+  }, [messages, pendingJumpId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -509,7 +539,22 @@ export default function CommunityPage() {
             </div>
             <div className="sx-chat-top-actions">
               <button className="sx-icon-action sx-member-toggle" onClick={() => setShowMembers(value => !value)} aria-label="Toggle member list"><Users size={16}/></button>
-              <label className="sx-chat-search"><Search size={14}/><input value={searchText} onChange={event => setSearchText(event.target.value)} placeholder="Search messages…"/></label>
+              <label className="sx-chat-search"><Search size={14}/><input value={searchText} onChange={event => { setSearchText(event.target.value); setSearchOpen(Boolean(event.target.value.trim())); }} onFocus={() => { if (searchText.trim()) setSearchOpen(true); }} placeholder="Search all messages…"/></label>
+              {searchOpen && searchText.trim().length >= 2 && <div className="sx-global-search-results">
+                <div className="sx-global-search-head">{globalSearching ? "SEARCHING…" : globalResults.length + " RESULTS"}<button onClick={() => { setSearchOpen(false); setSearchText(""); }}><X size={13}/></button></div>
+                {globalResults.map(result => {
+                  const peerId = result.conversationType === "direct" ? result.peerId : null;
+                  const peer = peerId ? memberMap.get(peerId) : null;
+                  const authorId = result.conversationType === "direct" ? result.sender_id : result.author_id;
+                  const author = memberMap.get(authorId || "");
+                  return <button key={result.id} className="sx-global-search-result" onClick={() => { setSearchOpen(false); setSearchText(""); setPendingJumpId(result.id); switchConversation(peerId); }}>
+                    <span className="sx-search-result-type">{result.conversationType === "direct" ? "DM" : "ROOM"}</span>
+                    <span><strong>{peer?.display_name || "Community room"}</strong><small>{author?.display_name || "Member"} · {result.body.slice(0, 100)}</small></span>
+                    <time>{formatTime(result.created_at)}</time>
+                  </button>;
+                })}
+                {!globalSearching && !globalResults.length && <p className="sx-global-search-empty">No messages found.</p>}
+              </div> }
               {activePeer && <button className="sx-icon-action" onClick={() => setProfileTarget(activePeer)} aria-label="Member details"><MoreHorizontal size={18}/></button>}
             </div>
           </div>
