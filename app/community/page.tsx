@@ -78,7 +78,7 @@ export default function CommunityPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const typingChannelRef = useRef<ReturnType<ReturnType<typeof getSupabase>[\"channel\"]> | null>(null);
+  const typingChannelRef = useRef<ReturnType<ReturnType<typeof getSupabase>["channel"]> | null>(null);
   const lastTypingRef = useRef(0);
 
   const activePeer = useMemo(() => profiles.find(person => person.id === activePeerId) || null, [profiles, activePeerId]);
