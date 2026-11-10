@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowUpRight, ShieldCheck, UserRoundPlus } from "lucide-react";
+import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 
 export default function JoinPage() {
