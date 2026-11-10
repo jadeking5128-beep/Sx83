@@ -543,7 +543,7 @@ export default function CommunityPage() {
               {searchOpen && searchText.trim().length >= 2 && <div className="sx-global-search-results">
                 <div className="sx-global-search-head">{globalSearching ? "SEARCHING…" : globalResults.length + " RESULTS"}<button onClick={() => { setSearchOpen(false); setSearchText(""); }}><X size={13}/></button></div>
                 {globalResults.map(result => {
-                  const peerId = result.conversationType === "direct" ? result.peerId : null;
+                  const peerId = result.conversationType === "direct" ? (result.peerId || null) : null;
                   const peer = peerId ? memberMap.get(peerId) : null;
                   const authorId = result.conversationType === "direct" ? result.sender_id : result.author_id;
                   const author = memberMap.get(authorId || "");
