@@ -208,7 +208,7 @@ export default function CommunityPage() {
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [userId, activePeerId, loadMessages, refreshInbox]);
+  }, [userId, activePeerId, loadMessages, refreshInbox, profiles]);
 
   useEffect(() => {
     if (!userId) return;
