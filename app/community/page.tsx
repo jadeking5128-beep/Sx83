@@ -130,11 +130,11 @@ export default function CommunityPage() {
     const query = peerId
       ? supabase.from("direct_messages").select("*")
           .or("and(sender_id.eq." + uid + ",recipient_id.eq." + peerId + "),and(sender_id.eq." + peerId + ",recipient_id.eq." + uid + ")")
-          .order("created_at", { ascending: true }).limit(200)
+          .order("created_at", { ascending: false }).limit(200)
       : supabase.from("community_messages").select("*").order("created_at", { ascending: true }).limit(200);
     const { data, error: queryError } = await query;
     if (queryError) { setError(queryError.message); return; }
-    const hydrated = await hydrateMessages((data || []) as ChatMessage[]);
+    const hydrated = await hydrateMessages([...((data || []) as ChatMessage[])].reverse());
     setMessages(hydrated);
     const ids = hydrated.map(message => message.id);
     if (ids.length) {
