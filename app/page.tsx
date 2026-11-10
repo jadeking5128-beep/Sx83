@@ -91,6 +91,7 @@ export default function Home() {
   const [analystBusy, setAnalystBusy] = useState(false);
   const [analystError, setAnalystError] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [navFilter, setNavFilter] = useState("");
   const [clock, setClock] = useState("--:--:-- UTC");
   const [viewer, setViewer] = useState<Source | null>(null);
   const [sourceCopied, setSourceCopied] = useState(false);
@@ -121,6 +122,7 @@ export default function Home() {
   }, []);
 
   const currentNav = nav.find((item) => item.id === active);
+  const filteredNav = useMemo(() => nav.filter((item) => (item.label + " " + item.group).toLowerCase().includes(navFilter.trim().toLowerCase())), [navFilter]);
   const filteredArticles = useMemo(() => articles.filter((article) => (article.title + " " + article.domain).toLowerCase().includes(filter.toLowerCase())), [articles, filter]);
 
   async function askAnalyst(event: React.FormEvent<HTMLFormElement>) {
@@ -147,7 +149,7 @@ export default function Home() {
         <button className="mobile-close" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={18}/></button>
       </div>
       <div className="workspace-switch"><div className="workspace-icon">X</div><div><strong>Research workspace</strong><small>Independent network</small></div><ChevronDown size={14}/></div>
-      {["WORKSPACE", "RESEARCH", "TOOLS"].map((group) => <div className="nav-group" key={group}><div className="nav-label">{group}</div>{nav.filter((item) => item.group === group).map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => go(item.id)} className={`nav-item ${active === item.id ? "active" : ""}`}><Icon size={17}/><span>{item.label}</span>{item.id === "analyst" && <span className="nav-ai">AI</span>}</button>; })}</div>)}
+      <div className="nav-filter"><Search size={14}/><input aria-label="Find a navigation section" placeholder="Find a section…" value={navFilter} onChange={(event) => setNavFilter(event.target.value)}/><kbd>/</kbd></div>{["WORKSPACE", "RESEARCH", "TOOLS"].map((group) => { const items = filteredNav.filter((item) => item.group === group); return items.length ? <div className="nav-group" key={group}><div className="nav-label">{group}<span>{String(items.length).padStart(2, "0")}</span></div>{items.map((item) => { const Icon = item.icon; return <button key={item.id} onClick={() => go(item.id)} aria-current={active === item.id ? "page" : undefined} className={`nav-item ${active === item.id ? "active" : ""}`}><Icon size={17}/><span>{item.label}</span>{item.id === "analyst" && <span className="nav-ai">AI</span>}</button>; })}</div> : null; })}{filteredNav.length === 0 && <div className="nav-empty">No matching sections.</div>}
       <div className="sidebar-bottom"><div className="system-card"><div><i className="status-pulse"/> PLATFORM STATUS</div><strong>Research environment</strong><small>Public-source data layer · Phase 2</small></div><div className="user-row"><div className="avatar">SX</div><div><strong>SectorX83</strong><small>Independent research network</small></div><span className="user-state">ACTIVE</span></div></div>
     </aside>
     {mobileOpen && <button className="mobile-scrim" onClick={() => setMobileOpen(false)} aria-label="Close menu"/>}
