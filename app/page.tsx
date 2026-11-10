@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Activity, ArrowDownRight, ArrowUpRight, Atom, Bell, BookOpen, Building2,
   CalendarClock, ChevronDown, ChevronRight, CircleDot, Clock3, Database,
-  FileText, Globe2, Landmark, Layers3, Menu, Newspaper, RadioTower,
+  FileText, Globe2, Landmark, Menu, Newspaper, RadioTower,
   RefreshCw, Search, ShieldCheck, Sparkles, TrendingUp, X,
 } from "lucide-react";
 import { researchSources } from "@/lib/sources";
