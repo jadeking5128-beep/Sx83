@@ -46,7 +46,8 @@ export default function CommunityPage() {
     if (profileResult.data) { setProfile(profileResult.data); setBio(profileResult.data.bio || ""); }
     if (memberResult.data) setProfiles(memberResult.data);
     if (postResult.data) setPosts(postResult.data);
-    if (chatResult.data) setMessages(chatResult.data);
+    if (chatResult.data) setMessages([...chatResult.data].reverse());
+    if (commentResult.data) setComments([...commentResult.data].reverse());
     const firstError = profileResult.error || memberResult.error || postResult.error || chatResult.error || commentResult.error;
     if (firstError) setError(firstError.message);
     setLoading(false);
