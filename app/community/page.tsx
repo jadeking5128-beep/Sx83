@@ -46,6 +46,11 @@ function formatBytes(value?: number | null) {
 function pairContext(a: string, b: string) {
   return "dm-" + [a, b].sort().join("-");
 }
+function renderMessageText(body: string) {
+  return body.split(/(https?:\\/\\/[^\\s]+)/g).map((part, index) => /^https?:\\/\\//.test(part)
+    ? <a key={index} href={part} target="_blank" rel="noreferrer">{part}</a>
+    : <span key={index}>{part}</span>);
+}
 
 export default function CommunityPage() {
   const router = useRouter();
@@ -80,6 +85,9 @@ export default function CommunityPage() {
   const [profileDraft, setProfileDraft] = useState({ username: "", display_name: "", bio: "", location: "", website_url: "", avatar_url: "", skills: "", interests: "" });
   const [profileBusy, setProfileBusy] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [chatTheme, setChatTheme] = useState("graphite");
+  const audioContextRef = useRef<AudioContext | null>(null);
   const [, setNotificationsEnabled] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const chatLogRef = useRef<HTMLDivElement>(null);
@@ -186,6 +194,12 @@ export default function CommunityPage() {
   useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
+    const saved = window.localStorage.getItem("sx83-chat-theme");
+    if (saved === "graphite" || saved === "silver" || saved === "deep") setChatTheme(saved);
+  }, []);
+  useEffect(() => { window.localStorage.setItem("sx83-chat-theme", chatTheme); }, [chatTheme]);
+
+  useEffect(() => {
     const term = searchText.trim();
     if (term.length < 2 || !userId) { setGlobalResults([]); setGlobalSearching(false); return; }
     let active = true;
@@ -224,9 +238,12 @@ export default function CommunityPage() {
         const row = (payload.new || payload.old) as ChangeRow;
         if (row && (row.sender_id === userId || row.recipient_id === userId)) {
           if (activePeerId && (row.sender_id === activePeerId || row.recipient_id === activePeerId)) void loadMessages(activePeerId);
-          if (payload.eventType === "INSERT" && row.sender_id !== userId && row.recipient_id === userId && Boolean(row.sender_id) && !mutedIds.includes(row.sender_id) && document.hidden && "Notification" in window && Notification.permission === "granted") {
+          if (payload.eventType === "INSERT" && row.sender_id !== userId && row.recipient_id === userId && Boolean(row.sender_id) && !mutedIds.includes(row.sender_id)) {
+            if (soundEnabled) playPing();
+            if (document.hidden && "Notification" in window && Notification.permission === "granted") {
             const sender = profiles.find(person => person.id === row.sender_id);
-            new Notification(sender?.display_name || "SX83 message", { body: row.body || "Sent an attachment" });
+              new Notification(sender?.display_name || "SX83 message", { body: row.body || "Sent an attachment" });
+            }
           }
           void refreshInbox(userId);
         }
@@ -246,7 +263,7 @@ export default function CommunityPage() {
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [userId, activePeerId, loadMessages, refreshInbox, profiles, mutedIds]);
+  }, [userId, activePeerId, loadMessages, refreshInbox, profiles, mutedIds, soundEnabled]);
 
   useEffect(() => {
     if (!userId) return;
@@ -467,6 +484,29 @@ export default function CommunityPage() {
     if (reportError) setError(reportError.message); else setNotice("Report submitted to moderators.");
   }
 
+  function playPing() {
+    const context = audioContextRef.current;
+    if (!context || context.state !== "running") return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine"; oscillator.frequency.value = 740;
+    gain.gain.setValueAtTime(0.025, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.13);
+    oscillator.connect(gain); gain.connect(context.destination);
+    oscillator.start(); oscillator.stop(context.currentTime + 0.14);
+  }
+
+  async function toggleSound() {
+    if (!soundEnabled) {
+      try {
+        const context = new AudioContext();
+        await context.resume();
+        audioContextRef.current = context;
+      } catch { setError("Audio notifications are unavailable in this browser."); return; }
+    }
+    setSoundEnabled(value => !value);
+  }
+
   async function enableNotifications() {
     if (!("Notification" in window)) { setError("Browser notifications are unavailable."); return; }
     const permission = await Notification.requestPermission();
@@ -488,7 +528,7 @@ export default function CommunityPage() {
   }
 
   const memberMap = useMemo(() => new Map(profiles.map(person => [person.id, person])), [profiles]);
-  return <main className="sx-community-page chat-active sx-messenger">
+  return <main className="sx-community-page chat-active sx-messenger" data-chat-theme={chatTheme}>
     <header className="sx-community-top">
       <Link href="/community" className="sx-community-brand"><span className="sx-mark small"><span>SX</span><b>83</b></span><span>SECTORX83 <small>COMMUNITY NETWORK</small></span></Link>
       <nav className="sx-floating-nav" aria-label="Main navigation">
@@ -551,6 +591,8 @@ export default function CommunityPage() {
             </div>
             <div className="sx-chat-top-actions">
               <button className="sx-icon-action sx-member-toggle" onClick={() => setShowMembers(value => !value)} aria-label="Toggle member list"><Users size={16}/></button>
+              <button className={"sx-icon-action " + (soundEnabled ? "is-active" : "")} onClick={() => void toggleSound()} title={soundEnabled ? "Turn sound off" : "Turn sound on"}><Volume2 size={15}/></button>
+              <button className="sx-icon-action" onClick={() => setChatTheme(value => value === "graphite" ? "silver" : value === "silver" ? "deep" : "graphite")} title="Change chat theme"><ChevronDown size={15}/></button>
               <label className="sx-chat-search"><Search size={14}/><input value={searchText} onChange={event => { setSearchText(event.target.value); setSearchOpen(Boolean(event.target.value.trim())); }} onFocus={() => { if (searchText.trim()) setSearchOpen(true); }} placeholder="Search all messages…"/></label>
               {searchOpen && searchText.trim().length >= 2 && <div className="sx-global-search-results">
                 <div className="sx-global-search-head">{globalSearching ? "SEARCHING…" : globalResults.length + " RESULTS"}<button onClick={() => { setSearchOpen(false); setSearchText(""); }}><X size={13}/></button></div>
@@ -589,7 +631,7 @@ export default function CommunityPage() {
                 <div className="sx-message-content">
                   <div className="sx-message-meta"><button onClick={() => author && setProfileTarget(author)}>{own ? "You" : author?.display_name || "Member"}</button><span>@{author?.username || "member"}</span><time>{formatTime(message.created_at)}</time>{message.edited_at && <em>EDITED</em>}{activePeerId && own && <span className="sx-read-state">{message.read_at ? <CheckCheck size={13}/> : <Check size={13}/>}</span>}</div>
                   {reply && <button className="sx-reply-preview" onClick={() => chatLogRef.current?.querySelector('[data-message-id="' + reply.id + '"]')?.scrollIntoView({ behavior: "smooth", block: "center" })}><Reply size={12}/>{reply.body.slice(0, 110)}</button>}
-                  {message.body && <p className="sx-message-body">{message.body}</p>}
+                  {message.body && <p className="sx-message-body">{renderMessageText(message.body)}</p>}
                   {message.attachment_url && <div className="sx-attachment">
                     {message.attachment_mime?.startsWith("image/") ? <a href={message.attachment_url} target="_blank" rel="noreferrer"><img src={message.attachment_url} alt={message.attachment_name || "Shared image"}/></a>
                     : message.attachment_mime?.startsWith("audio/") ? <audio controls src={message.attachment_url}/>
