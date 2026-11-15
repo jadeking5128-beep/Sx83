@@ -4,7 +4,7 @@ import styles from "./projects.module.css";
 const updates = [
   { number: "01", title: "Project established", detail: "The Bunker Plan was introduced as a SectorX83 institutional development initiative and communicated to members through a formal circular.", date: "INITIAL COMMUNICATION" },
   { number: "02", title: "Executive review completed", detail: "The Executive reviewed the submitted project data and approved progression to further procedures. Supporting documentation is to be maintained as the project develops.", date: "REVIEW & APPROVAL" },
-  { number: "03", title: "Project parameters recorded", detail: "The approved planning basis records a newly constructed underground complex and a provisional project budget ceiling of ₹30,00,000. The project remains in development; this record does not represent construction commencement or expenditure.", date: "APPROVED PARAMETERS" },
+  { number: "03", title: "Development basis recorded", detail: "The project record establishes a newly constructed underground complex as the development basis. The initiative remains in development and this entry does not represent construction commencement.", date: "PROJECT PARAMETERS" },
 ];
 
 const workstreams = [
@@ -16,7 +16,7 @@ const workstreams = [
 ];
 
 const stages = [
-  ["01", "Feasibility & site assessment", "Site suitability, permissions, professional assessments and preliminary cost validation."],
+  ["01", "Feasibility & site assessment", "Site suitability, permissions and professional assessments."],
   ["02", "Design & civil development", "Professional design and planning for the new underground construction, including structural, ventilation, drainage and utility requirements."],
   ["03", "Core systems", "Planning for power continuity, communications, monitoring, network access, water, sanitation and emergency systems."],
   ["04", "Controlled fit-out", "Documentation, inventory controls, secure storage arrangements and any approved specialist spaces."],
@@ -36,7 +36,6 @@ export default function ProjectsPage() {
         <div><small>PROJECT CLASS</small><strong>UNDERGROUND DEVELOPMENT</strong></div>
         <div><small>RECORD ACCESS</small><strong>MEMBERS ONLY</strong></div>
         <div><small>PROJECT STATUS</small><strong>IN DEVELOPMENT</strong></div>
-        <div><small>APPROVED BUDGET BASIS</small><strong>₹30,00,000</strong></div>
         <div><small>CONSTRUCTION BASIS</small><strong>NEW UNDERGROUND BUILD</strong></div>
         <div><small>PROJECT AUTHORITY</small><strong>SECTORX83 EXECUTIVE</strong></div>
       </div>
@@ -44,7 +43,7 @@ export default function ProjectsPage() {
       <section className={styles.section}>
         <div className={styles.sectionHeading}><span>01 / PROJECT MANDATE</span><span>OVERVIEW</span></div>
         <p className={styles.bodyCopy}>The initiative concerns the planning and development of a purpose-built underground facility for SectorX83. Its proposed functions bring together coordination, communications, controlled storage, a designated practice area and essential site-support systems within one managed development.</p>
-        <p className={styles.bodyCopy}>The approved planning basis specifies a large underground complex, new construction and a budget of ₹30 lakh. These are planning parameters, not evidence that a site has been acquired, construction has begun, or funds have been spent.</p>
+        <p className={styles.bodyCopy}>The project is based on new construction of an underground complex. Site selection, design and implementation remain subject to professional assessment, required permissions and formal approval.</p>
       </section>
 
       <section className={styles.section}>
@@ -65,7 +64,7 @@ export default function ProjectsPage() {
           <li>Any surveillance, communications or data systems must operate within applicable privacy and data-protection requirements.</li>
           <li>Any air-gun storage or practice activity is conditional on applicable licensing, possession, storage, supervision and use requirements. No operational weapon instructions are part of this project record.</li>
           <li>Emergency access, fire protection, ventilation, drainage, sanitation and safe occupancy must be addressed before commissioning.</li>
-          <li>Budget changes, material scope changes and major milestones must be documented and submitted to the appropriate SectorX83 authority for review.</li>
+          <li>Material changes to project scope and major milestones must be documented and submitted to the appropriate SectorX83 authority for review.</li>
           <li>No facility area is to be treated as operational until the required inspections, approvals and commissioning records are complete.</li>
         </ul>
       </section>
