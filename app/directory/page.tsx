@@ -42,6 +42,6 @@ export default function DirectoryPage() {
       <h2>{item.name}</h2><p>{item.focus}</p>
       <div className={styles.links}><a href={item.contact} target="_blank" rel="noreferrer">PUBLIC CONTACT <ExternalLink size={13}/></a><a href={item.website} target="_blank" rel="noreferrer">WEBSITE <ExternalLink size={13}/></a></div>
     </article>)}</div>
-    <p className={styles.disclaimer}>Listing an organization does not indicate a relationship, endorsement, sponsorship or existing correspondence with SectorX83. Contact details are routed through each organization's own published channels; no private or personal contact information is included.</p>
+    <p className={styles.disclaimer}>Listing an organization does not indicate a relationship, endorsement, sponsorship or existing correspondence with SectorX83. Contact details are routed through each organization&apos;s own published channels; no private or personal contact information is included.</p>
   </PortalShell>;
 }
