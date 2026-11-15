@@ -41,7 +41,7 @@ export default function DirectoryPage() {
       <div className={styles.cardTop}><span>{String(index + 1).padStart(2, "0")} / CONTACT</span><span>{item.category}</span></div>
       <h2>{item.name}</h2><p>{item.focus}</p>
       <div className={styles.links}>
-        {item.phone && <a href={`tel:${item.phone.replace(/[^+\\d]/g, "")}`}>PHONE: {item.phone}</a>}
+        {item.phone && <a href={`tel:${item.phone.replace(/[^+0-9]/g, "")}`}>PHONE: {item.phone}</a>}
         {item.email && <a href={`mailto:${item.email}`}>EMAIL: {item.email}{item.contactNote ? ` · ${item.contactNote}` : ""}</a>}
         {!item.phone && !item.email && <span>{item.contactNote}</span>}
         <a href={item.website} target="_blank" rel="noreferrer">OFFICIAL WEBSITE <ExternalLink size={13}/></a>
