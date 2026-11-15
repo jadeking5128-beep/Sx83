@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SX83 | Messages",
-  description: "SX83 — a member-powered community for real-time messaging.",
-  applicationName: "SX83",
+  title: "SectorX83 | Institutional Network",
+  description: "SectorX83 institutional membership, governance, communications and archives.",
+  applicationName: "SectorX83",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
 };
 
