@@ -45,7 +45,7 @@ export default function ConstitutionPage() {
 
       <div className="sx-constitution-preamble">
         <div><span className="sx-kicker">PREAMBLE</span><h2>Principles before position.</h2></div>
-        <p>This constitution establishes the standards that govern participation in SectorX83. It defines the community's purpose, protects member autonomy and sets expectations for responsible administration. Every member and office-holder is subject to these principles.</p>
+        <p>This constitution establishes the standards that govern participation in SectorX83. It defines the community&apos;s purpose, protects member autonomy and sets expectations for responsible administration. Every member and office-holder is subject to these principles.</p>
       </div>
 
       <div className="sx-constitution-content">
@@ -70,7 +70,7 @@ export default function ConstitutionPage() {
         </div>
       </div>
 
-      <div className="sx-constitution-note"><ShieldCheck size={18}/><p><strong>Scope and application</strong><br/>This is the community's operating framework. It does not replace applicable law or create authority over any person outside SectorX83.</p></div>
+      <div className="sx-constitution-note"><ShieldCheck size={18}/><p><strong>Scope and application</strong><br/>This is the community&apos;s operating framework. It does not replace applicable law or create authority over any person outside SectorX83.</p></div>
       <footer className="sx-community-footer"><span>SECTORX83 · CONSTITUTION · GOV / DOC-001</span><span><Link href="/community">RETURN TO COMMUNITY ↗</Link></span></footer>
     </section>
   </main>;
