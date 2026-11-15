@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ExternalLink, Search } from "lucide-react";
 import PortalShell from "@/components/portal-shell";
-import styles from "../contacts/contacts.module.css";
+import styles from "./directory.module.css";
 
 type Contact = { name: string; category: string; focus: string; website: string; contact: string };
 
