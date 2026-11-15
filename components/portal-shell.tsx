@@ -49,7 +49,7 @@ export default function PortalShell({ eyebrow, title, description, adminOnly = f
     <header className={styles.header}>
       <Link href="/" className={styles.brand}><span className={styles.mark}>SX<span>83</span></span><span>SECTORX83<small>INSTITUTIONAL NETWORK</small></span></Link>
       <nav className={styles.nav}>
-        <Link href="/community">Community</Link><Link href="/bulletin">Bulletin</Link><Link href="/members">Registry</Link><Link href="/archives">Archives</Link><Link href="/constitution">Constitution</Link>
+        <Link href="/community">Community</Link><Link href="/bulletin">Bulletin</Link><Link href="/members">Registry</Link><Link href="/contacts">Contacts</Link><Link href="/archives">Archives</Link><Link href="/constitution">Constitution</Link>
         {admin && <Link href="/administration">Administration</Link>}
       </nav>
       <div className={styles.account}><span>{name}{admin ? " · ADMIN" : ""}</span><button onClick={signOut}>SIGN OUT</button></div>
