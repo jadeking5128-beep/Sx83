@@ -5,19 +5,19 @@ import { ExternalLink, Search } from "lucide-react";
 import PortalShell from "@/components/portal-shell";
 import styles from "./directory.module.css";
 
-type Contact = { name: string; category: string; focus: string; website: string; contact: string };
+type Contact = { name: string; category: string; focus: string; website: string; phone?: string; email?: string; contactNote?: string };
 
 const contacts: Contact[] = [
-  { name: "Rothschild & Co", category: "Financial services", focus: "Global advisory, wealth and asset management", website: "https://www.rothschildandco.com/", contact: "https://www.rothschildandco.com/en/contact-us/" },
-  { name: "JPMorganChase", category: "Banking", focus: "Consumer, commercial and investment banking", website: "https://www.jpmorganchase.com/", contact: "https://www.jpmorganchase.com/contact-us" },
-  { name: "BlackRock", category: "Asset management", focus: "Investment management and financial technology", website: "https://www.blackrock.com/", contact: "https://www.blackrock.com/corporate/about-us/who-we-are/contacts-and-locations" },
-  { name: "The Rockefeller Foundation", category: "Philanthropy", focus: "Global development, health, energy and food systems", website: "https://www.rockefellerfoundation.org/", contact: "https://www.rockefellerfoundation.org/about-us/contact/" },
-  { name: "Rockefeller Capital Management", category: "Wealth management", focus: "Financial advisory and wealth management", website: "https://www.rockco.com/", contact: "https://www.rockco.com/about-rcm/contact/" },
-  { name: "Goldman Sachs", category: "Financial services", focus: "Investment banking, markets and asset management", website: "https://www.goldmansachs.com/", contact: "https://www.goldmansachs.com/contact-us" },
-  { name: "Morgan Stanley", category: "Financial services", focus: "Institutional securities and wealth management", website: "https://www.morganstanley.com/", contact: "https://www.morganstanley.com/contact-us" },
-  { name: "UBS", category: "Banking", focus: "Global wealth management and investment banking", website: "https://www.ubs.com/", contact: "https://www.ubs.com/global/en/our-firm/contact.html" },
-  { name: "HSBC", category: "Banking", focus: "International banking and financial services", website: "https://www.hsbc.com/", contact: "https://www.hsbc.com/contact-us" },
-  { name: "World Economic Forum", category: "International organization", focus: "Public-private cooperation and global dialogue", website: "https://www.weforum.org/", contact: "https://www.weforum.org/contact/" },
+  { name: "Rothschild & Co", category: "Financial services", focus: "Global advisory, wealth and asset management", website: "https://www.rothschildandco.com/", phone: "+33 1 40 74 40 74", email: "contact@rothschildandco.com" },
+  { name: "JPMorganChase", category: "Banking", focus: "Consumer, commercial and investment banking", website: "https://www.jpmorganchase.com/", phone: "+1 212 270 6000", email: "corporate.secretary@jpmchase.com", contactNote: "Corporate Secretary" },
+  { name: "BlackRock", category: "Asset management", focus: "Investment management and financial technology", website: "https://www.blackrock.com/", phone: "+1 212 810 5800" },
+  { name: "The Rockefeller Foundation", category: "Philanthropy", focus: "Global development, health, energy and food systems", website: "https://www.rockefellerfoundation.org/", phone: "+1 212 869 8500" },
+  { name: "Rockefeller Capital Management", category: "Wealth management", focus: "Financial advisory and wealth management", website: "https://www.rockco.com/", phone: "+1 212 549 5100" },
+  { name: "Goldman Sachs", category: "Financial services", focus: "Investment banking, markets and asset management", website: "https://www.goldmansachs.com/", phone: "+1 212 902 1000", email: "gs-investor-relations@gs.com", contactNote: "Investor Relations email" },
+  { name: "Morgan Stanley", category: "Financial services", focus: "Institutional securities and wealth management", website: "https://www.morganstanley.com/", phone: "+1 212 761 4000" },
+  { name: "UBS", category: "Banking", focus: "Global wealth management and investment banking", website: "https://www.ubs.com/", phone: "+41 44 234 11 11" },
+  { name: "HSBC", category: "Banking", focus: "International banking and financial services", website: "https://www.hsbc.com/", phone: "+44 20 7991 8888" },
+  { name: "World Economic Forum", category: "International organization", focus: "Public-private cooperation and global dialogue", website: "https://www.weforum.org/", contactNote: "No general public phone or email verified" },
 ];
 
 export default function DirectoryPage() {
@@ -40,8 +40,13 @@ export default function DirectoryPage() {
     <div className={styles.grid}>{filtered.map((item, index) => <article className={styles.card} key={item.name}>
       <div className={styles.cardTop}><span>{String(index + 1).padStart(2, "0")} / CONTACT</span><span>{item.category}</span></div>
       <h2>{item.name}</h2><p>{item.focus}</p>
-      <div className={styles.links}><a href={item.contact} target="_blank" rel="noreferrer">PUBLIC CONTACT <ExternalLink size={13}/></a><a href={item.website} target="_blank" rel="noreferrer">WEBSITE <ExternalLink size={13}/></a></div>
+      <div className={styles.links}>
+        {item.phone && <a href={`tel:${item.phone.replace(/[^+\\d]/g, "")}`}>PHONE: {item.phone}</a>}
+        {item.email && <a href={`mailto:${item.email}`}>EMAIL: {item.email}{item.contactNote ? ` · ${item.contactNote}` : ""}</a>}
+        {!item.phone && !item.email && <span>{item.contactNote}</span>}
+        <a href={item.website} target="_blank" rel="noreferrer">OFFICIAL WEBSITE <ExternalLink size={13}/></a>
+      </div>
     </article>)}</div>
-    <p className={styles.disclaimer}>Listing an organization does not indicate a relationship, endorsement, sponsorship or existing correspondence with SectorX83. Contact details are routed through each organization&apos;s own published channels; no private or personal contact information is included.</p>
+    <p className={styles.disclaimer}>Contacts are publicly listed organizational switchboards or designated corporate contacts, not personal contacts. Some email addresses are department-specific. Listing an organization does not imply a relationship, endorsement, sponsorship or existing correspondence with SectorX83.</p>
   </PortalShell>;
 }
